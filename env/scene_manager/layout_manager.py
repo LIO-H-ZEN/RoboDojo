@@ -431,6 +431,12 @@ class LayoutManager:
             if not relative:
                 env_pos = deepcopy(self.scene_manager.env_origins[env_idx]).to(device)
                 pos = pos + env_pos
+            # Move host-side: callers (reward manager, tasks) treat these as
+            # numpy arrays; a cuda tensor would crash np.concatenate.
+            if hasattr(pos, "detach"):
+                pos = pos.detach().cpu().numpy()
+            if hasattr(rot, "detach"):
+                rot = rot.detach().cpu().numpy()
             return (pos, rot)
         elif instance_type in ["garment", "geometry"]:
             state = obj.get_state(is_relative=True)

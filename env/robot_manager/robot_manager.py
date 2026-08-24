@@ -346,7 +346,9 @@ class RobotManager:
     def restore_name(self, processed_name):
         if processed_name.endswith("_joint_state"):
             name = processed_name[:-12]
-            if name.startswith("ee"):
+            if name.startswith("ee") and name != "ee":
+                # Indexed grippers (ee0/ee1...) mirror indexed arms (arm0/arm1...).
+                # The bare single-arm gripper name is "ee" itself.
                 return "arm" + name[2:]
             else:
                 return name

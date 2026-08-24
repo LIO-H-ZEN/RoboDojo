@@ -17,6 +17,7 @@ import transforms3d as t3d
 import yaml
 
 from env.global_configs import BATCH_NUM
+from utils.path import resolve_path
 from utils.transformer import calculate_target_pose
 
 _curobo_runtime.cuda_graph_reset = True
@@ -478,6 +479,11 @@ class CuroboPlanner:
             "grasp_contact_link_names",
         }
         kinematics = {k: v for k, v in kinematics.items() if k in kinematics_allowed}
+        # Resolve $RoboDojo_ASSETS-style placeholders in asset paths so the
+        # underlying URDF/mesh loaders get real filesystem paths.
+        for path_key in ("urdf_path", "asset_root_path"):
+            if isinstance(kinematics.get(path_key), str) and "$" in kinematics[path_key]:
+                kinematics[path_key] = resolve_path(kinematics[path_key])
         robot_cfg_v2 = {
             "robot_cfg": {"kinematics": kinematics},
             "load_dynamics": bool(yml_data.get("load_dynamics", False)),
