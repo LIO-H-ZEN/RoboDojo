@@ -186,14 +186,28 @@ def convert_urdf_to_usd(urdf_path, usd_path):
     from isaacsim.asset.importer.urdf import _urdf  # noqa: E402
 
     config = _urdf.ImportConfig()
-    config.merge_fixed_joints = False      # keep joint names as authored
-    config.fix_base = True
-    config.self_collision = True
-    config.create_physics = True
-    config.create_joint_drives = True
-    config.import_inertia_tensor = True
-    config.import_mass = True
-    config.make_default_prim = True
+    # Attribute names vary across Isaac versions - set only what exists.
+    candidates = {
+        "merge_fixed_joints": False,       # keep joint names as authored
+        "fix_base": True,
+        "fix_base_link": True,
+        "self_collision": True,
+        "create_physics": True,
+        "create_joint_drives": True,
+        "import_inertia_tensor": True,
+        "import_mass": True,
+        "inertia_from_visuals": True,
+        "make_default_prim": True,
+        "density": 1000.0,
+    }
+    applied = []
+    for attr, value in candidates.items():
+        if hasattr(config, attr):
+            setattr(config, attr, value)
+            applied.append(attr)
+    print(f"[piper] import attrs applied: {applied}")
+    print(f"[piper] import attrs unavailable: "
+          f"{sorted(set(candidates) - set(applied))}")
 
     result = omni.kit.commands.execute(
         "URDFParseAndImportFile",
