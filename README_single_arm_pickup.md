@@ -53,9 +53,9 @@ python scripts/internal/scripted_single_arm_pickup.py \
     --headless --enable_cameras --episodes 10
 ```
 
-`Assets/Robots/piper/` is **not** in the HF asset repo — bootstrap it from a
-local [piper_ros](https://github.com/agilexrobotics/piper_ros) checkout
-(`piper_description`):
+`Assets/Robots/piper/` is **not** in the HF asset repo — bootstrap it from
+[piper_ros (noetic branch)](https://github.com/agilexrobotics/piper_ros/tree/noetic/src/piper_description)
+(`src/piper_description`) with `scripts/internal/build_piper_assets.py`:
 
 ```bash
 # laptop: copy urdf+meshes, generate robot_config.yml / curobo.yml
@@ -67,11 +67,28 @@ python scripts/internal/build_piper_assets.py \
     --piper-src /path/to/piper_description --convert --headless
 ```
 
-The bootstrap parses the URDF (joint1-6 revolute arm; joint7/8 prismatic
-mirrored fingers, [0, 0.035]) and generates both ymls. `gripper_bias`
-(0.18, link6→TCP) is an estimate from the URDF geometry — tune from
-first-run videos. Repo-side `robot_config/piper.py` assumes x5-style
-`joint1`-`joint8` naming, which matches the piper_description URDF.
+The bootstrap:
+
+- copies `piper_description.urdf` + STL meshes, rewriting `package://` mesh
+  paths to relative ones;
+- parses the URDF and generates `robot_config.yml` (joint1-6 revolute arm;
+  joint7/8 prismatic mirrored fingers with mimic −1.0, range [0, 0.035];
+  `gripper_bias` 0.18 = link6→TCP, an estimate — tune from first-run videos)
+  and `curobo.yml` (x5-equivalent structure: full 8-joint cspace with
+  explicit weights — omitting them crashes curobo's solver core with an
+  object-dtype `np.array(None)`; collision spheres omitted since the
+  scripted validation is IK-only);
+- converts the URDF to `piper.usd` via Isaac Sim's URDF importer
+  (`merge_fixed_joints=False` to keep the `joint1`-`joint8` names the repo
+  side assumes; importer attribute names are probed with `hasattr` because
+  they differ across Isaac versions).
+
+**Note on the tool axis**: the piper's gripper extends along **link6 +Z**,
+unlike the x5's **+X**. Grasp orientations carry an `approach_axis_index`
+(2 for piper, 0 for x5 — auto-detected by the runner from the robot name);
+`single_piper.yml` uses the `piper_top_down` direction. Applying an x5
+orientation to a piper points the gripper horizontally forward instead of
+down — the exact symptom of the first piper bring-up run.
 
 - Replays dual-arm `Eval_Layout` jsons (object placements are arm-independent).
 - **Workspace filter**: only layouts whose target lies within `|x| ≤ 0.25`,
@@ -86,6 +103,9 @@ first-run videos. Repo-side `robot_config/piper.py` assumes x5-style
 
 ### Known limitations
 
+- **No wrist camera yet**: the piper URDF has no camera link (the x5 USD
+  ships one), so only `cam_head` is available. Mounting a camera on
+  `gripper_base` requires injecting a link into the URDF before conversion.
 - **Ring/hollow objects** (e.g. `tiara`, `donut`, `frame`): the scripted
   controller grasps the bbox **center**, which is empty space for such shapes.
   These are reported as fails — a limitation of the scripted checker, not of
