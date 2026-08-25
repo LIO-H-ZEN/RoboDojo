@@ -22,7 +22,7 @@ CKPT="${2:?missing CKPT}"
 POLICY_ENV="${3:?missing POLICY_ENV}"
 EVAL_NUM="${4:-1}"
 TASK=general_pickup_single
-ENV_CFG=arx_x5_single
+ENV_CFG=piper_single
 
 cd "$(dirname "$0")"
 echo "=== [1/4] static checks ==="

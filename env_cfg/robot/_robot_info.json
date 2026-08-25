@@ -6,5 +6,9 @@
     "single_x5": {
         "arm_dim": [6],
         "ee_dim": [1]
+    },
+    "single_piper": {
+        "arm_dim": [6],
+        "ee_dim": [1]
     }
 }

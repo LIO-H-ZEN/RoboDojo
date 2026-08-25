@@ -8,7 +8,7 @@ EvalEnv-compatible shims installed on the TaskEnv (take_action, is_episode_end,
 get_obs_batch). The controller reads ground-truth target pose/bbox but drives
 the robot only through normal joint actions.
 
-Validates general_pickup_single + arx_x5_single: every episode writes a QA
+Validates general_pickup_single + piper_single: every episode writes a QA
 report (privileged_pick_layout_N.json) and a verdict line.
 
 Usage (server, robodojo conda env, assets initialized):
@@ -27,7 +27,7 @@ from isaaclab.app import AppLauncher
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--task-name", type=str, default="general_pickup_single")
-parser.add_argument("--env-cfg", type=str, default="arx_x5_single")
+parser.add_argument("--env-cfg", type=str, default="piper_single")
 parser.add_argument("--episodes", type=int, default=5)
 parser.add_argument("--seed", type=int, default=0)
 parser.add_argument("--interp", type=int, default=20, help="interp steps per action (collect_interval)")

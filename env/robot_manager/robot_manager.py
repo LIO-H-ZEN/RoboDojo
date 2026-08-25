@@ -683,10 +683,15 @@ ROBOT_CLASS_REGISTRY = {
         "module": "x5",
         "classes": ("X5",),
     },
+    "piper": {
+        "module": "piper",
+        "classes": ("Piper",),
+    },
 }
 
 
 ROBOT_CONFIG_REGISTRY = {
     "franka": "franka",
     "x5": "x5",
+    "piper": "piper",
 }

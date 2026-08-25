@@ -3,7 +3,7 @@
 Single-arm variant of `general_pickup` for training and evaluating **single-arm
 pickup** policies, before dual-arm pickup is on the roadmap. Same task logic
 and reward as the base task (lift the target object by 10 cm), same object
-pool and clutter, but driven by **one centered X5 arm**.
+pool and clutter, but driven by **one centered Piper arm**.
 
 ## Files
 
@@ -11,9 +11,10 @@ pool and clutter, but driven by **one centered X5 arm**.
 | :-- | :-- |
 | `task/RoboDojo/tasks/general_pickup_single.py` | task class; reuses `GeneralPickupCommon` (reward: `is_lift(target, 0.1)`) |
 | `task/RoboDojo/config/general_pickup_single.yml` | task config: target workspace `xlim ±0.25`, clutter `xlim ±0.3` |
-| `env_cfg/robot/single_x5.yml` | single X5 arm, base `[0, -0.45, 0.765]`, facing the table |
-| `env_cfg/robot/_robot_info.json` | `single_x5` action dims (`arm_dim: [6]`, `ee_dim: [1]`) |
-| `env_cfg/arx_x5_single.yml` | eval env cfg (`--env-cfg arx_x5_single`) |
+| `env_cfg/robot/single_piper.yml` | single Piper arm, base `[0, -0.45, 0.765]`, facing the table |
+| `env/robot_manager/robot_class/piper.py` + `robot_config/piper.py` | Piper robot class + IsaacLab articulation cfg (registered in `robot_manager.py`) |
+| `env_cfg/robot/_robot_info.json` | `single_piper` action dims (`arm_dim: [6]`, `ee_dim: [1]`) |
+| `env_cfg/piper_single.yml` | eval env cfg (`--env-cfg piper_single`) |
 | `env_cfg/camera/camera_config_single.yml` | `cam_head` + `cam_wrist` (no left/right prefixes) |
 | `env_cfg/scene/single_arm.yml` | default scene with the head-camera tripod relocated |
 | `scripts/internal/privileged_pick.py` | ground-truth-guided pick controller (QA) |
@@ -22,8 +23,10 @@ pool and clutter, but driven by **one centered X5 arm**.
 
 ## Design decisions
 
-- **Arm placement**: centered at `[0, -0.45, 0.765]`. Worst-case radial reach
-  equals what each dual arm covers for its own half of the workspace.
+- **Arm placement**: one Piper centered at `[0, -0.45, 0.765]`. Worst-case radial
+  reach equals what each dual arm covers for its own half of the workspace.
+  (A `single_x5` config also exists as an alternate embodiment: task and
+  env cfgs are robot-agnostic; pick via `--env-cfg` / `robot:` key.)
 - **Workspace `±0.25`** (base task is `±0.4` across two arms): the outer band
   beyond ~`±0.3` is where the centered arm's wrist cannot form a true vertical
   top-down grasp at full extension. Reachability was validated 20/20 over the
@@ -49,6 +52,12 @@ while reading ground-truth target pose/bbox:
 python scripts/internal/scripted_single_arm_pickup.py \
     --headless --enable_cameras --episodes 10
 ```
+
+Requires `Assets/Robots/piper/` to contain `piper.usd`, `robot_config.yml`
+(embodiment args: `arm_joints_name`, `gripper_scale`, `gripper_move`,
+`gripper_bias`, `ee_link`, ...) and `curobo.yml`. The repo-side
+`robot_config/piper.py` assumes joint names `joint1`-`joint8` (6 arm +
+2 gripper, matching the x5 convention) — adjust it if the USD differs.
 
 - Replays dual-arm `Eval_Layout` jsons (object placements are arm-independent).
 - **Workspace filter**: only layouts whose target lies within `|x| ≤ 0.25`,
@@ -78,7 +87,7 @@ python scripts/internal/scripted_single_arm_pickup.py \
 ```bash
 bash scripts/robodojo.sh eval \
     --task general_pickup_single \
-    --env-cfg arx_x5_single \
+    --env-cfg piper_single \
     --policy-dir XPolicyLab/policy/<POLICY> \
     --ckpt <CKPT> --policy-env <ENV>
 
