@@ -32,10 +32,8 @@ parser.add_argument("--assets-root", type=str, default=None,
                     help="RoboDojo Assets dir (default: <repo>/Assets)")
 parser.add_argument("--convert", action="store_true",
                     help="also convert the URDF to piper.usd (requires Isaac Sim)")
-# Passthrough for AppLauncher (e.g. --headless). Parsed later in
-# convert_urdf_to_usd via parse_known_args; kept out of the strict parser.
-parser.add_argument("app_launcher_args", nargs="*",
-                    help=argparse.SUPPRESS)
+# Extra flags (e.g. --headless) pass through to AppLauncher in the convert
+# stage; main() uses parse_known_args so they are not rejected here.
 
 CONVERT_ARGS = []
 
@@ -184,7 +182,7 @@ def convert_urdf_to_usd(urdf_path, usd_path):
 
 
 def main():
-    args = parser.parse_args()
+    args, _ = parser.parse_known_args()  # ignore AppLauncher passthrough flags
     global CONVERT_ARGS
     CONVERT_ARGS = sys.argv[1:]
     target = args.assets_root or os.path.join(repo_root(), "Assets", "Robots", "piper")
