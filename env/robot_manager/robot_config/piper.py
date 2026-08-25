@@ -31,8 +31,9 @@ def get_robot_config():
                 "joint4": 0.0,
                 "joint5": 0.0,
                 "joint6": 0.0,
-                "joint7": 0.044,
-                "joint8": 0.044,
+                # gripper home = closed: joint7 [0, 0.035], joint8 [-0.035, 0]
+                "joint7": 0.0,
+                "joint8": 0.0,
             },
             pos=(0.25, -0.25, 0.0),
             rot=(0.707, 0, 0, 0.707),

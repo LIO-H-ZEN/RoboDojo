@@ -53,11 +53,25 @@ python scripts/internal/scripted_single_arm_pickup.py \
     --headless --enable_cameras --episodes 10
 ```
 
-Requires `Assets/Robots/piper/` to contain `piper.usd`, `robot_config.yml`
-(embodiment args: `arm_joints_name`, `gripper_scale`, `gripper_move`,
-`gripper_bias`, `ee_link`, ...) and `curobo.yml`. The repo-side
-`robot_config/piper.py` assumes joint names `joint1`-`joint8` (6 arm +
-2 gripper, matching the x5 convention) — adjust it if the USD differs.
+`Assets/Robots/piper/` is **not** in the HF asset repo — bootstrap it from a
+local [piper_ros](https://github.com/agilexrobotics/piper_ros) checkout
+(`piper_description`):
+
+```bash
+# laptop: copy urdf+meshes, generate robot_config.yml / curobo.yml
+python scripts/internal/build_piper_assets.py \
+    --piper-src /path/to/piper_ros-noetic/src/piper_description
+
+# server (robodojo env): also convert the URDF to piper.usd
+python scripts/internal/build_piper_assets.py \
+    --piper-src /path/to/piper_description --convert --headless
+```
+
+The bootstrap parses the URDF (joint1-6 revolute arm; joint7/8 prismatic
+mirrored fingers, [0, 0.035]) and generates both ymls. `gripper_bias`
+(0.18, link6→TCP) is an estimate from the URDF geometry — tune from
+first-run videos. Repo-side `robot_config/piper.py` assumes x5-style
+`joint1`-`joint8` naming, which matches the piper_description URDF.
 
 - Replays dual-arm `Eval_Layout` jsons (object placements are arm-independent).
 - **Workspace filter**: only layouts whose target lies within `|x| ≤ 0.25`,
