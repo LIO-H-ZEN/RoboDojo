@@ -24,6 +24,9 @@ import transforms3d as t3d
 DEFAULT_GRASP_QUATERNIONS = {
     "top_down_little_left": [-0.353523, 0.61239, -0.353524, -0.61239],
     "top_down_little_right": [-0.61239, 0.353523, -0.61239, -0.353524],
+    # Piper: the gripper extends along link6 +Z (not +X like the x5), so a
+    # top-down grasp is a 180-deg rotation about X (link6 z -> world -z).
+    "piper_top_down": [0.0, 1.0, 0.0, 0.0],
 }
 
 
@@ -87,6 +90,7 @@ def linear_waypoints(start: Any, end: Any, count: int) -> list[np.ndarray]:
 class PrivilegedPickConfig:
     target_label: str = "target"
     env_idx: int = 0
+    approach_axis_index: int = 0
     pregrasp_clearance_m: float = 0.10
     grasp_height_fraction: float = 0.55
     pose_action_repeats: int = 16
@@ -121,6 +125,8 @@ class PrivilegedPickConfig:
             raise ValueError("target_label must be non-empty")
         if self.env_idx < 0:
             raise ValueError("env_idx must be non-negative")
+        if self.approach_axis_index not in (0, 1, 2):
+            raise ValueError("approach_axis_index must be 0 (x), 1 (y) or 2 (z)")
         if not 0.0 <= self.grasp_height_fraction <= 1.0:
             raise ValueError("grasp_height_fraction must be within [0, 1]")
         if self.pregrasp_clearance_m <= 0:
@@ -311,7 +317,9 @@ class PrivilegedPickController:
                 )
                 continue
             quaternion = normalize_quaternion(self.config.direction_quaternions[direction_name])
-            approach = t3d.quaternions.quat2mat(quaternion)[:, 0]
+            # Tool approach axis in the ee frame: x5 grippers extend along +X
+            # (index 0), the piper along +Z (index 2).
+            approach = t3d.quaternions.quat2mat(quaternion)[:, self.config.approach_axis_index]
             if approach[2] > -0.7:
                 candidates.append(
                     {

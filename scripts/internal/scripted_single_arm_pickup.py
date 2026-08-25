@@ -433,6 +433,12 @@ def main():
 
     print(f"[scripted] task={args_cli.task_name} env_cfg={args_cli.env_cfg} episodes={args_cli.episodes}")
 
+    # The x5's gripper extends along ee +X, the piper's along ee +Z; the
+    # grasp quaternion table and approach-axis column differ accordingly.
+    is_piper = any(r.robot_name == "piper" for r in env.robot_manager.robot_list)
+    approach_axis = 2 if is_piper else 0
+    print(f"[scripted] robot tool approach axis index: {approach_axis}")
+
     results = []
     for ep in range(args_cli.episodes):
         seed = args_cli.seed + ep
@@ -482,7 +488,10 @@ def main():
         recorder.new_episode(ep, seed)
         recorder.grab()
 
-        controller = PrivilegedPickController(env, PrivilegedPickConfig(record_video_frames=not args_cli.no_video))
+        controller = PrivilegedPickController(
+            env,
+            PrivilegedPickConfig(record_video_frames=not args_cli.no_video, approach_axis_index=approach_axis),
+        )
         report = controller.run()
 
         result = report["result"]
