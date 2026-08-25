@@ -32,6 +32,10 @@ parser.add_argument("--assets-root", type=str, default=None,
                     help="RoboDojo Assets dir (default: <repo>/Assets)")
 parser.add_argument("--convert", action="store_true",
                     help="also convert the URDF to piper.usd (requires Isaac Sim)")
+# Passthrough for AppLauncher (e.g. --headless). Parsed later in
+# convert_urdf_to_usd via parse_known_args; kept out of the strict parser.
+parser.add_argument("app_launcher_args", nargs="*",
+                    help=argparse.SUPPRESS)
 
 CONVERT_ARGS = []
 
@@ -145,7 +149,9 @@ def convert_urdf_to_usd(urdf_path, usd_path):
 
     convert_parser = argparse.ArgumentParser()
     AppLauncher.add_app_launcher_args(convert_parser)
-    args, _ = convert_parser.parse_known_args(CONVERT_ARGS)
+    # Drop our own flags; pass the rest (e.g. --headless) through.
+    passthrough = [a for a in CONVERT_ARGS if a not in ("--convert",) and not a.startswith("--piper-src") and not a.startswith("--assets-root")]
+    args, _ = convert_parser.parse_known_args(passthrough)
     app = AppLauncher(args).app
 
     import omni.kit.commands  # noqa: E402
