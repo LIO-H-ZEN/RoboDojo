@@ -117,25 +117,55 @@ grasp_camera_reference_axis: [1, 0, 0] # in base_link frame
     print(f"[piper] wrote {path}")
 
 
-def write_curobo_config(target, arm_joints):
-    joint_list = ", ".join(f'"{j}"' for j in arm_joints)
-    retract = ", ".join(["0.0"] * len(arm_joints))
-    content = f"""# Minimal curobo config for the Piper arm (consumed by
-# env/planner_manager/curobo_planner.py). IK-only: no collision spheres, so
-# motion planning collision checks are disabled; if the MotionPlanner
-# constructor complains, generate spheres with curobo's sphere-fitting tool.
-planner:
-  frame_bias: [0.0, 0.0, 0.0]
+def write_curobo_config(target, joints):
+    """Mirror the official x5 curobo.yml structure (all 8 joints in cspace).
 
+    Collision spheres are omitted: IK (solve_pose) does not consult them and
+    the scripted validation never runs motion planning. If plan_path with
+    collision checking is ever needed, regenerate the file with curobo's
+    generate_robot_yaml.py sphere fitting and merge the spheres in.
+    """
+    arm = [j["name"] for j in joints if j["type"] == "revolute"]
+    gripper = [j["name"] for j in joints if j["type"] == "prismatic"]
+    # Same ordering convention as the x5 config: arm joints, then gripper
+    # joints mirrored (joint8 before joint7).
+    cspace_joints = arm + gripper[::-1]
+    n = len(cspace_joints)
+    joint_list = ", ".join(f'"{j}"' for j in cspace_joints)
+    ones = ", ".join(["1.0"] * n)
+    tens = ", ".join(["10.0"] * n)
+    jerks = ", ".join(["500.0"] * n)
+    zeros = ", ".join(["0.0"] * n)
+    content = f"""# Curobo config for the Piper arm (consumed by
+# env/planner_manager/curobo_planner.py), mirroring the official x5
+# curobo.yml structure. IK-only: collision spheres omitted (IK solve_pose
+# does not use them); regenerate with curobo's generate_robot_yaml.py if
+# collision-checked motion planning is ever needed.
 robot_cfg:
   kinematics:
     base_link: base_link
-    ee_link: link6
+    tool_frames:
+    - link6
     urdf_path: $RoboDojo_ASSETS/Robots/piper/piper.urdf
     asset_root_path: $RoboDojo_ASSETS/Robots/piper
+    use_global_cumul: true
+    load_meshes: false
+    format_version: 2.0
     cspace:
       joint_names: [{joint_list}]
-      retract_config: [{retract}]
+      default_joint_position: [{zeros}]
+      cspace_distance_weight: [{ones}]
+      null_space_weight: [{ones}]
+      null_space_maximum_distance: [{ones}]
+      max_acceleration: [{tens}]
+      max_jerk: [{jerks}]
+      velocity_scale: [{ones}]
+      acceleration_scale: [{ones}]
+      jerk_scale: [{ones}]
+      position_limit_clip: 0.0
+
+planner:
+  frame_bias: [0.0, 0.0, 0.0]
 """
     path = os.path.join(target, "curobo.yml")
     open(path, "w", encoding="utf-8").write(content)
@@ -191,7 +221,7 @@ def main():
     joints = parse_urdf(urdf_path)
     arm = [j["name"] for j in joints if j["type"] == "revolute"]
     write_robot_config(target, joints)
-    write_curobo_config(target, arm)
+    write_curobo_config(target, joints)
 
     if args.convert:
         convert_urdf_to_usd(urdf_path, os.path.join(target, "piper.usd"))
