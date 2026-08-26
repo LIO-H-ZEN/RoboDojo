@@ -44,6 +44,25 @@ pool and clutter, but driven by **one centered Piper arm**.
   (`arm_joint_state`, `ee_joint_state`, `ee_pose`, ...) and must not emit
   `left_`/`right_` prefixed keys — see `eval_env.validate_action_dict`.
 
+## Easy variant: `general_pickup_single_easy`
+
+Simplified single-arm pickup for early-stage training: **no clutter** and a
+tighter target workspace (`xlim ±0.15`, `ylim [-0.15, 0.05]` vs the full
+variant's `±0.25` / `[-0.2, 0.05]`). Same object pool, same reward (lift the
+target 10 cm).
+
+```bash
+# scripted validation: replay dual-arm layouts with clutter stripped and
+# the workspace filter tightened to the easy task's bounds
+python scripts/internal/scripted_single_arm_pickup.py --headless --enable_cameras \
+    --task-name general_pickup_single_easy --no-clutter \
+    --workspace-x 0.15 --workspace-y -0.2 -0.0 --episodes 10
+
+# policy eval
+bash scripts/robodojo.sh eval --task general_pickup_single_easy \
+    --env-cfg piper_single --policy-dir ... --ckpt ... --policy-env ...
+```
+
 ## Policy-free validation (privileged scripted grasp)
 
 No policy server needed; drives the robot only through normal joint actions

@@ -54,6 +54,12 @@ parser.add_argument(
     help="glob for layout jsons inside --layout-dir (layouts are task-named)",
 )
 parser.add_argument("--no-video", action="store_true", help="disable per-episode video recording")
+parser.add_argument(
+    "--no-clutter",
+    action="store_true",
+    help="strip clutter objects from the replayed layouts (matches the "
+    "general_pickup_single_easy no-clutter task variant)",
+)
 parser.add_argument("--video-dir", type=str, default="eval_result/scripted_single_arm")
 parser.add_argument(
     "--workspace-x",
@@ -136,6 +142,29 @@ def patch_camera_stand(layouts):
             if pos is not None and abs(pos[0]) < 1e-6:
                 inst["default_pos"] = [-0.55, pos[1], pos[2]]
                 print(f"[layout] camera_stand moved to {inst['default_pos']}", flush=True)
+    return layouts
+
+
+def strip_clutter(layouts):
+    """Remove clutter instances from replayed layouts (easy task variant).
+
+    The dual-arm layouts bake ~10 clutter objects in; the *_easy task spawns
+    none. Clutter insts are marked with type "cluttered" in the layout json.
+    """
+    if not args_cli.no_clutter:
+        return layouts
+    removed = 0
+    for layout in layouts:
+        for section in ("Rigid", "Dynamic"):
+            cats = layout.get(section) or {}
+            for cat, insts in list(cats.items()):
+                kept = [i for i in (insts or []) if i.get("type") != "cluttered"]
+                removed += len(insts or []) - len(kept)
+                if kept:
+                    cats[cat] = kept
+                else:
+                    cats.pop(cat)
+    print(f"[layout] stripped {removed} clutter instances", flush=True)
     return layouts
 
 
@@ -451,7 +480,7 @@ def main():
     _, task_class = task_registry.load_task_class(args_cli.task_name)
     env = task_class(env_cfg, simulation_app)
 
-    layouts, num_excluded = filter_workspace(patch_camera_stand(load_layouts()))
+    layouts, num_excluded = filter_workspace(strip_clutter(patch_camera_stand(load_layouts())))
     recorder = EpisodeRecorder(env, simulation_app)
     install_eval_env_shims(env, recorder)
 

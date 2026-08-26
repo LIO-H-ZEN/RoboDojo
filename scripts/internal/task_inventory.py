@@ -69,6 +69,7 @@ DIMENSION_TASKS: dict[str, tuple[str, ...]] = {
         "align_blocks",
         "general_pickup",
         "general_pickup_single",
+        "general_pickup_single_easy",
         "solve_equation",
         "stack_blocks_by_language",
         "classify_objects_by_language",
