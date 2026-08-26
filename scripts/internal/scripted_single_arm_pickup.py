@@ -501,6 +501,9 @@ def main():
     # grasp quaternion table and approach-axis column differ accordingly.
     is_piper = any(r.robot_name == "piper" for r in env.robot_manager.robot_list)
     approach_axis = 2 if is_piper else 0
+    # Piper fingers separate along link6 +-Y (measured); used to keep the jaw
+    # opening across the object's SHORT axis when picking a grasp yaw.
+    opening_axis = 1 if is_piper else None
     # The piper's wrist pitch (joint5 +-70deg) cannot reach an exact vertical
     # tool over much of the workspace; offer +-10deg tilted orientations it
     # can achieve exactly (same trick as the x5's "little_left/right").
@@ -561,6 +564,7 @@ def main():
             PrivilegedPickConfig(
                 record_video_frames=not args_cli.no_video,
                 approach_axis_index=approach_axis,
+                opening_axis_index=opening_axis,
                 orientation_tilt_degrees=tilt_degrees,
                 # Grasp deeper into the object: with the TCP at 55% height the
                 # fingers only straddle the object's top sliver when closing

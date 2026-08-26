@@ -91,6 +91,7 @@ class PrivilegedPickConfig:
     target_label: str = "target"
     env_idx: int = 0
     approach_axis_index: int = 0
+    opening_axis_index: int | None = None
     orientation_tilt_degrees: tuple = ()
     pregrasp_clearance_m: float = 0.10
     grasp_height_fraction: float = 0.55
@@ -128,6 +129,8 @@ class PrivilegedPickConfig:
             raise ValueError("env_idx must be non-negative")
         if self.approach_axis_index not in (0, 1, 2):
             raise ValueError("approach_axis_index must be 0 (x), 1 (y) or 2 (z)")
+        if self.opening_axis_index is not None and self.opening_axis_index not in (0, 1, 2):
+            raise ValueError("opening_axis_index must be 0 (x), 1 (y) or 2 (z)")
         if any(abs(t) > 30.0 for t in self.orientation_tilt_degrees):
             raise ValueError("orientation_tilt_degrees must stay within +-30deg of the base orientation")
         if not 0.0 <= self.grasp_height_fraction <= 1.0:
@@ -331,6 +334,26 @@ class PrivilegedPickController:
                 )
         return bases
 
+    def _ordered_yaw_candidates(self, base_mat: np.ndarray, long_axis: int | None) -> list[float]:
+        """Yaw candidates, shape-aware order: opening across the short axis.
+
+        The gripper's fingers separate along the link axis given by
+        opening_axis_index (piper: Y). For an elongated object the opening
+        direction must be perpendicular to the object's long axis - order the
+        yaw sweep by that alignment. Without opening_axis_index (x5) or for
+        near-square objects the original fixed order applies.
+        """
+        yaws = [0.0, 45.0, -45.0, 90.0, -90.0, 135.0, -135.0, 180.0]
+        if self.config.opening_axis_index is None or long_axis is None:
+            return yaws
+
+        def opening_alignment(yaw_deg: float) -> float:
+            yaw_mat = t3d.euler.euler2mat(0.0, 0.0, np.deg2rad(yaw_deg), "sxyz")
+            opening = (yaw_mat @ base_mat)[:, self.config.opening_axis_index]
+            return abs(float(opening[long_axis]))  # ~0 = perpendicular = good
+
+        return sorted(yaws, key=opening_alignment)
+
     def _select_robot(self, target: Mapping[str, Any]) -> dict[str, Any]:
         candidates = []
         for robot in self.robot_manager.robot_list:
@@ -373,12 +396,23 @@ class PrivilegedPickController:
             ik_result = {"status": "Fail"}
             yaw_variant = None
             variant_label = "base"
+            # Object's dominant horizontal axis (world frame). The gripper
+            # opening must straddle the SHORT dimension: yaw=0 feels like the
+            # neutral choice, but for an elongated object it often puts the
+            # fingers along the long axis - wider than the jaw span, so the
+            # fingers press on the object's ends and never grip the body.
+            extents = np.asarray(target["world_bbox_extents"], dtype=float)
+            long_axis = None
+            if extents[0] > extents[1] * 1.2:
+                long_axis = 0
+            elif extents[1] > extents[0] * 1.2:
+                long_axis = 1
             for base_label, base_quat in self._grasp_orientation_bases(quaternion):
                 base_mat = t3d.quaternions.quat2mat(base_quat)
                 base_approach = base_mat[:, self.config.approach_axis_index]
                 grasp_link_position = np.asarray(target["grasp_point"]) - base_approach * gripper_bias
                 pregrasp_link_position = grasp_link_position - base_approach * self.config.pregrasp_clearance_m
-                for yaw_deg in (0.0, 45.0, -45.0, 90.0, -90.0, 135.0, -135.0, 180.0):
+                for yaw_deg in self._ordered_yaw_candidates(base_mat, long_axis):
                     if yaw_deg == 0.0:
                         quaternion_try = base_quat
                     else:
@@ -416,6 +450,7 @@ class PrivilegedPickController:
                     "arm_name": robot.arm_name,
                     "direction": direction_name,
                     "orientation_variant": variant_label,
+                    "object_long_axis": long_axis,
                     "yaw_variant_deg": yaw_variant,
                     "approach_axis": approach,
                     "gripper_bias_m": gripper_bias,
