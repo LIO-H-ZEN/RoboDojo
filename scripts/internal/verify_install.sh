@@ -3,6 +3,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+PROJECT_PYTHONPATH="${ROOT_DIR}:${ROOT_DIR}/XPolicyLab${PYTHONPATH:+:${PYTHONPATH}}"
 
 policy_dir=""
 env_cfg="arx_x5"
@@ -188,7 +189,7 @@ else
   record "WARN" "policy processor" "skipped; pass --policy-dir to validate"
 fi
 
-if python3 - <<PY; then
+if env PYTHONPATH="${PROJECT_PYTHONPATH}" PYTHONNOUSERSITE=1 python3 - <<PY; then
 from env.global_configs import BENCHMARK, ROOT_DIR
 assert BENCHMARK == "RoboDojo"
 assert ROOT_DIR
@@ -227,7 +228,7 @@ fi
 if [[ "${skip_isaac}" == "true" ]]; then
   record "WARN" "Isaac imports" "skipped by --skip-isaac"
 elif [[ -n "${sim_python}" ]]; then
-  if "${sim_python}" - <<'PY'; then
+  if env OMNI_KIT_ACCEPT_EULA=YES PYTHONPATH="${PROJECT_PYTHONPATH}" PYTHONNOUSERSITE=1 "${sim_python}" - <<'PY'; then
 import isaacsim  # noqa: F401
 import isaaclab  # noqa: F401
 PY
@@ -236,7 +237,7 @@ PY
     record "FAIL" "Isaac imports" "isaacsim/isaaclab import failed in ${sim_env}"
   fi
 elif command -v conda >/dev/null 2>&1; then
-  if conda run -n "${sim_env}" python - <<'PY'; then
+  if env OMNI_KIT_ACCEPT_EULA=YES PYTHONPATH="${PROJECT_PYTHONPATH}" PYTHONNOUSERSITE=1 conda run -n "${sim_env}" python - <<'PY'; then
 import isaacsim  # noqa: F401
 import isaaclab  # noqa: F401
 PY
