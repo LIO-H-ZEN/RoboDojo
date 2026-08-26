@@ -1,4 +1,5 @@
 config_name: arx_x5_single
+layout_config_name: arx_x5
 
 config:
   sim: sim_config

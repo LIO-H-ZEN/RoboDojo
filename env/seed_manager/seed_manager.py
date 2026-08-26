@@ -17,6 +17,7 @@ class SeedManager:
         # config fields used for directory layout
         self.task_name: str = str(self.config["task_name"])
         self.config_name: str = str(self.config["config_name"])
+        self.layout_config_name: str = str(self.config.get("layout_config_name", self.config_name))
 
         self.st_idx: int
         self.ed_idx: int
@@ -30,7 +31,7 @@ class SeedManager:
         abandoned_layout_ids: Iterable[int] | None = None,
     ):
         self.eval_seed = self.config.get("seed", 0)
-        layout_dir = Path(ASSETS_PATH, "Eval_Layout", BENCHMARK, self.config_name, str(self.eval_seed))
+        layout_dir = Path(ASSETS_PATH, "Eval_Layout", BENCHMARK, self.layout_config_name, str(self.eval_seed))
         pattern = re.compile(rf"{re.escape(self.task_name)}_\d+\.json")
         matching_files = sorted(
             [p for p in layout_dir.iterdir() if pattern.fullmatch(p.name)],
