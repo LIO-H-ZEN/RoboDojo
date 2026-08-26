@@ -68,8 +68,7 @@ parser.add_argument(
     nargs=2,
     type=float,
     default=[-0.25, 0.0],
-    help="world-frame y bounds of the task workspace (config ylim [-0.2,0.05] "
-    "around table center y=-0.05)",
+    help="world-frame y bounds of the PIPER task workspace",
 )
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
@@ -108,7 +107,7 @@ def build_env_cfg():
     camera_cfg = load_yaml(os.path.join(ENV_CONFIG_PATH, "camera", eval_cfg["config"]["camera"] + ".yml"))
     # Mirrors main.py: injected from eval_cfg observation.collect_freq; the
     # camera manager pops this key and crashes with UnboundLocalError if absent.
-    camera_cfg["default_frequency"] = 25
+    camera_cfg["default_frequency"] = eval_cfg["observation"]["collect_freq"]
     return OmegaConf.create(
         {
             "sim": sim_cfg,
