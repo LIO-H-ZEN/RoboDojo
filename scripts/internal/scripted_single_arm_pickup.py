@@ -305,6 +305,17 @@ class EpisodeRecorder:
         self.close_writers()
         self.ep = ep
         self.env_seed = env_seed
+        # Replicator annotator data lags the render by one kit frame: the
+        # read after this update still returns the PREVIOUS episode's last
+        # frame, which would become the first frame of the new video. Prime
+        # the pipeline once and discard that frame.
+        if not args_cli.no_video and self.annotators is not None:
+            try:
+                self.app.update()
+                for annotator in self.annotators.values():
+                    annotator.get_data()
+            except Exception:
+                pass
 
     def close_writers(self):
         for writer in self.writers.values():
