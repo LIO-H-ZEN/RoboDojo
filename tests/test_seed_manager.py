@@ -7,7 +7,7 @@ def test_layout_config_name_can_reuse_an_existing_layout_family(tmp_path, monkey
     layout_dir = tmp_path / "Eval_Layout" / "RoboDojo" / "arx_x5" / "0"
     layout_dir.mkdir(parents=True)
     expected = {"Rigid": {"bell": [{"category_idx": 0}]}}
-    (layout_dir / "general_pickup_single_0.json").write_text(json.dumps(expected), encoding="utf-8")
+    (layout_dir / "general_pickup_0.json").write_text(json.dumps(expected), encoding="utf-8")
     monkeypatch.setattr(seed_manager, "ASSETS_PATH", str(tmp_path))
 
     manager = seed_manager.SeedManager(
@@ -16,6 +16,7 @@ def test_layout_config_name_can_reuse_an_existing_layout_family(tmp_path, monkey
             "task_name": "general_pickup_single",
             "config_name": "arx_x5_single",
             "layout_config_name": "arx_x5",
+            "layout_task_name": "general_pickup",
             "seed": 0,
         }
     )

@@ -18,6 +18,7 @@ class SeedManager:
         self.task_name: str = str(self.config["task_name"])
         self.config_name: str = str(self.config["config_name"])
         self.layout_config_name: str = str(self.config.get("layout_config_name", self.config_name))
+        self.layout_task_name: str = str(self.config.get("layout_task_name", self.task_name))
 
         self.st_idx: int
         self.ed_idx: int
@@ -32,7 +33,7 @@ class SeedManager:
     ):
         self.eval_seed = self.config.get("seed", 0)
         layout_dir = Path(ASSETS_PATH, "Eval_Layout", BENCHMARK, self.layout_config_name, str(self.eval_seed))
-        pattern = re.compile(rf"{re.escape(self.task_name)}_\d+\.json")
+        pattern = re.compile(rf"{re.escape(self.layout_task_name)}_\d+\.json")
         matching_files = sorted(
             [p for p in layout_dir.iterdir() if pattern.fullmatch(p.name)],
             key=lambda p: int(p.stem.rsplit("_", 1)[-1]),

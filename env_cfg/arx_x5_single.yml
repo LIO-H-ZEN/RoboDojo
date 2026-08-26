@@ -1,5 +1,6 @@
 config_name: arx_x5_single
 layout_config_name: arx_x5
+layout_task_name: general_pickup
 
 config:
   sim: sim_config
