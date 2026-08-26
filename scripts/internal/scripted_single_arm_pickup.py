@@ -172,8 +172,11 @@ def filter_workspace(layouts):
             outside.append((pos, layout))
     for pos, _ in outside:
         where = "?" if pos is None else np.round(pos[:2], 3).tolist()
-        print(f"[workspace] excluded layout, target at {where} outside "
-              f"|x|<={args_cli.workspace_x}, y in [{y_min}, {y_max}]", flush=True)
+        print(
+            f"[workspace] excluded layout, target at {where} outside "
+            f"|x|<={args_cli.workspace_x}, y in [{y_min}, {y_max}]",
+            flush=True,
+        )
     print(f"[workspace] {len(inside)} in-workspace, {len(outside)} excluded", flush=True)
     if not inside:
         raise RuntimeError("No in-workspace layouts left after filtering - check --workspace-x/-y")
@@ -233,9 +236,7 @@ class EpisodeRecorder:
         for cam_id, camera in enumerate(self.env.camera_manager.cameras[0]):
             cam_name = self.env.camera_manager.camera_names[0][cam_id]
             width, height = camera._resolution
-            render_product = rep.create.render_product(
-                camera.prim_path, resolution=(int(width), int(height))
-            )
+            render_product = rep.create.render_product(camera.prim_path, resolution=(int(width), int(height)))
             annotator = rep.AnnotatorRegistry.get_annotator("rgb", device="cpu")
             annotator.attach(render_product)
             self.annotators[cam_name] = annotator
@@ -261,9 +262,7 @@ class EpisodeRecorder:
                 frame = frame[:, :, :3]
                 if cam_name not in self.writers:
                     os.makedirs(args_cli.video_dir, exist_ok=True)
-                    out_path = os.path.join(
-                        args_cli.video_dir, f"ep{self.ep}_seed{self.env_seed}_{cam_name}.mp4"
-                    )
+                    out_path = os.path.join(args_cli.video_dir, f"ep{self.ep}_seed{self.env_seed}_{cam_name}.mp4")
                     # Real frame rate: one frame every GRAB_EVERY sim steps of dt.
                     self.writers[cam_name] = VideoStreamWriter(
                         out_path, frame.shape[0], frame.shape[1], 3, fps=GRAB_FPS
@@ -322,9 +321,7 @@ def install_eval_env_shims(env, recorder):
         seq = []
         for i in range(interp):
             control_info = {}
-            for robot, (arm_key, ee_key, arm_cmd, raw, mimic, current_arm, current_grip, (lo, hi)) in (
-                per_robot.items()
-            ):
+            for robot, (arm_key, ee_key, arm_cmd, raw, mimic, current_arm, current_grip, (lo, hi)) in per_robot.items():
                 if i < ramp:
                     a = (i + 1) / (ramp + 1)
                     arm_pos = ((1 - a) * current_arm + a * arm_cmd).tolist()
@@ -351,9 +348,7 @@ def install_eval_env_shims(env, recorder):
 
     def is_episode_end():
         # Mirrors EvalEnv.is_episode_end for a single env.
-        final_check = (
-            env.take_action_cnt[0] >= env.step_lim or (not env.success[0] and not env.end_flag[0])
-        )
+        final_check = env.take_action_cnt[0] >= env.step_lim or (not env.success[0] and not env.end_flag[0])
         reward_list = env.reward_manager.get_reward(final_check=final_check)
         if env.end_flag[0]:
             return
@@ -398,6 +393,7 @@ def fk_probe(env, robot):
     q1 = np.asarray(ik["joint_value"])
     print(f"[fk-probe] joints now     : {np.round(q0, 3).tolist()}", flush=True)
     print(f"[fk-probe] ik joints      : {np.round(q1, 3).tolist()}", flush=True)
+
     def _action(active, joints):
         act = {}
         for r in rm.robot_list:
@@ -503,8 +499,7 @@ def main():
             robot = next(r for r in env.robot_manager.robot_list if r.type == "target")
             print(f"[selfcheck] entity_origin_pose    : {np.round(robot.entity_origin_pose, 4).tolist()}")
             print(
-                f"[selfcheck] base_link_origin_pose : "
-                f"{np.round(np.asarray(robot.base_link_origin_pose), 4).tolist()}"
+                f"[selfcheck] base_link_origin_pose : {np.round(np.asarray(robot.base_link_origin_pose), 4).tolist()}"
             )
             print(f"[selfcheck] curobo frame_bias     : {env.robot_manager.planner[robot.robot_name].frame_bias}")
             # Verify the camera-stand relocation actually took effect.

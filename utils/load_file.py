@@ -5,7 +5,6 @@ import pickle
 
 import yaml
 
-
 _GIT_LFS_POINTER_PREFIX = b"version https://git-lfs.github.com/spec/v1"
 
 

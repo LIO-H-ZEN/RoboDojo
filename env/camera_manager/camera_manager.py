@@ -418,13 +418,9 @@ class CameraManager:
                 look_at_target = camera_config.camera.get("look_at_target")
                 look_at_up = camera_config.camera.get("look_at_up")
                 if (look_at_target is None) != (look_at_up is None):
-                    raise ValueError(
-                        f"Camera {camera_name!r} requires both look_at_target and look_at_up."
-                    )
+                    raise ValueError(f"Camera {camera_name!r} requires both look_at_target and look_at_up.")
                 if configured_ori is not None and look_at_target is not None:
-                    raise ValueError(
-                        f"Camera {camera_name!r} must use either ori or look-at fields, not both."
-                    )
+                    raise ValueError(f"Camera {camera_name!r} must use either ori or look-at fields, not both.")
                 if hasattr(camera_config.camera, "pos") and camera_config.camera.pos is not None:
                     position = torch.tensor(camera_config.camera.pos)
                 else:

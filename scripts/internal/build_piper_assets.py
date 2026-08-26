@@ -26,12 +26,11 @@ import shutil
 import sys
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--piper-src", type=str, required=True,
-                    help="path to a piper_description checkout (contains urdf/ and meshes/)")
-parser.add_argument("--assets-root", type=str, default=None,
-                    help="RoboDojo Assets dir (default: <repo>/Assets)")
-parser.add_argument("--convert", action="store_true",
-                    help="also convert the URDF to piper.usd (requires Isaac Sim)")
+parser.add_argument(
+    "--piper-src", type=str, required=True, help="path to a piper_description checkout (contains urdf/ and meshes/)"
+)
+parser.add_argument("--assets-root", type=str, default=None, help="RoboDojo Assets dir (default: <repo>/Assets)")
+parser.add_argument("--convert", action="store_true", help="also convert the URDF to piper.usd (requires Isaac Sim)")
 # Extra flags (e.g. --headless) pass through to AppLauncher in the convert
 # stage; main() uses parse_known_args so they are not rejected here.
 
@@ -55,13 +54,16 @@ def parse_urdf(urdf_path):
         parent = re.search(r"<parent\s+link=\"([^\"]+)\"", body)
         child = re.search(r"<child\s+link=\"([^\"]+)\"", body)
         limit = re.search(r"<limit\s+lower=\"([^\"]*)\"\s+upper=\"([^\"]*)\"", body)
-        joints.append({
-            "name": name, "type": jtype,
-            "parent": parent.group(1) if parent else None,
-            "child": child.group(1) if child else None,
-            "lower": float(limit.group(1)) if limit else None,
-            "upper": float(limit.group(2)) if limit else None,
-        })
+        joints.append(
+            {
+                "name": name,
+                "type": jtype,
+                "parent": parent.group(1) if parent else None,
+                "child": child.group(1) if child else None,
+                "lower": float(limit.group(1)) if limit else None,
+                "upper": float(limit.group(2)) if limit else None,
+            }
+        )
     return joints
 
 
@@ -194,17 +196,19 @@ def convert_urdf_to_usd(urdf_path, usd_path):
     convert_parser = argparse.ArgumentParser()
     AppLauncher.add_app_launcher_args(convert_parser)
     # Drop our own flags; pass the rest (e.g. --headless) through.
-    passthrough = [a for a in CONVERT_ARGS if a not in ("--convert",) and not a.startswith("--piper-src") and not a.startswith("--assets-root")]
+    passthrough = [
+        arg for arg in CONVERT_ARGS if arg != "--convert" and not arg.startswith(("--piper-src", "--assets-root"))
+    ]
     args, _ = convert_parser.parse_known_args(passthrough)
     app = AppLauncher(args).app
 
-    import omni.kit.commands  # noqa: E402
     from isaacsim.asset.importer.urdf import _urdf  # noqa: E402
+    import omni.kit.commands  # noqa: E402
 
     config = _urdf.ImportConfig()
     # Attribute names vary across Isaac versions - set only what exists.
     candidates = {
-        "merge_fixed_joints": False,       # keep joint names as authored
+        "merge_fixed_joints": False,  # keep joint names as authored
         "fix_base": True,
         "fix_base_link": True,
         "self_collision": True,
@@ -222,8 +226,7 @@ def convert_urdf_to_usd(urdf_path, usd_path):
             setattr(config, attr, value)
             applied.append(attr)
     print(f"[piper] import attrs applied: {applied}")
-    print(f"[piper] import attrs unavailable: "
-          f"{sorted(set(candidates) - set(applied))}")
+    print(f"[piper] import attrs unavailable: {sorted(set(candidates) - set(applied))}")
 
     result = omni.kit.commands.execute(
         "URDFParseAndImportFile",
@@ -249,7 +252,6 @@ def main():
 
     urdf_path = copy_assets(args.piper_src, target)
     joints = parse_urdf(urdf_path)
-    arm = [j["name"] for j in joints if j["type"] == "revolute"]
     write_robot_config(target, joints)
     write_curobo_config(target, joints)
 

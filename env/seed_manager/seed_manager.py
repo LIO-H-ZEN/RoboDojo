@@ -43,30 +43,22 @@ class SeedManager:
         matching_files = [path for path in matching_files if self._layout_allowed(load_json(path))]
 
         matching_files = [str(p) for p in matching_files]
-        self.seed_info = {
-            layout_id: {"scene_layout": file_path}
-            for layout_id, file_path in enumerate(matching_files)
-        }
+        self.seed_info = {layout_id: {"scene_layout": file_path} for layout_id, file_path in enumerate(matching_files)}
 
         all_layout_ids = list(range(len(matching_files)))
         requested_layout_ids = self.config.get("layout_ids")
         if requested_layout_ids is not None:
-            if isinstance(requested_layout_ids, (str, bytes)) or not isinstance(
-                requested_layout_ids, Sequence
-            ):
+            if isinstance(requested_layout_ids, (str, bytes)) or not isinstance(requested_layout_ids, Sequence):
                 raise ValueError("layout_ids must be a sequence of integers")
             selected_layout_ids = [int(layout_id) for layout_id in requested_layout_ids]
             if not selected_layout_ids:
                 raise ValueError("layout_ids must not be empty")
             if len(set(selected_layout_ids)) != len(selected_layout_ids):
                 raise ValueError(f"layout_ids must be unique: {selected_layout_ids}")
-            invalid_layout_ids = [
-                layout_id for layout_id in selected_layout_ids if layout_id not in self.seed_info
-            ]
+            invalid_layout_ids = [layout_id for layout_id in selected_layout_ids if layout_id not in self.seed_info]
             if invalid_layout_ids:
                 raise ValueError(
-                    f"layout_ids out of range: {invalid_layout_ids}; "
-                    f"available=0..{len(matching_files) - 1}"
+                    f"layout_ids out of range: {invalid_layout_ids}; available=0..{len(matching_files) - 1}"
                 )
             all_layout_ids = selected_layout_ids
             print(f"[SeedManager] init_eval layout shard: layout_ids={all_layout_ids}")
@@ -112,19 +104,13 @@ class SeedManager:
                         if not usd_path.is_file():
                             usd_path = asset_dir / "object.usd"
                         if not usd_path.is_file():
-                            raise FileNotFoundError(
-                                f"Object USD is missing for layout_id={layout_id}: {asset_dir}"
-                            )
+                            raise FileNotFoundError(f"Object USD is missing for layout_id={layout_id}: {asset_dir}")
                         if is_git_lfs_pointer(usd_path):
                             raise ValueError(
-                                f"Object USD is an unresolved Git LFS pointer for "
-                                f"layout_id={layout_id}: {usd_path}"
+                                f"Object USD is an unresolved Git LFS pointer for layout_id={layout_id}: {usd_path}"
                             )
                         checked_instances += 1
-        print(
-            f"[SeedManager] validated layout assets: "
-            f"layouts={list(layout_ids)} instances={checked_instances}"
-        )
+        print(f"[SeedManager] validated layout assets: layouts={list(layout_ids)} instances={checked_instances}")
 
     def get_seeds(self, max_count: int | None = None) -> List[int] | None:
         """Return a list of seeds for the next `reset()` call.
@@ -188,9 +174,9 @@ class SeedManager:
             raise ValueError(f"Layout target {label!r} has invalid default_pos: {position}")
         xlim = target_filter["xlim"]
         ylim = target_filter["ylim"]
-        return float(xlim[0]) <= float(position[0]) <= float(xlim[1]) and float(ylim[0]) <= float(
-            position[1]
-        ) <= float(ylim[1])
+        return float(xlim[0]) <= float(position[0]) <= float(xlim[1]) and float(ylim[0]) <= float(position[1]) <= float(
+            ylim[1]
+        )
 
     def _apply_layout_overrides(self, data: dict[str, Any]) -> None:
         if self.layout_overrides is None:

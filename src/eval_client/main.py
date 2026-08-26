@@ -65,8 +65,8 @@ args_cli = parser.parse_args()
 
 # Safe to import before AppLauncher: env.__init__ and GLOBAL_CONFIGS do not
 # import app-dependent code.
-from env.global_configs import BENCHMARK, ROOT_DIR
 from env.eval_overrides import apply_layout_shard
+from env.global_configs import BENCHMARK, ROOT_DIR
 
 task_registry = importlib.import_module(f"task.{BENCHMARK}.task_registry")
 
@@ -306,10 +306,7 @@ def main():
     )
     capped_num_envs = resolve_random_task_num_envs(task_name, num_envs, env_cfg.sim)
     if capped_num_envs != num_envs:
-        print(
-            f"[main] Random task {task_name}: num_envs capped "
-            f"{num_envs} -> {capped_num_envs} "
-        )
+        print(f"[main] Random task {task_name}: num_envs capped {num_envs} -> {capped_num_envs}")
     num_envs = capped_num_envs
     if not eval_batch and num_envs != 1:
         print(

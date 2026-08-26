@@ -27,9 +27,7 @@ def test_layout_config_name_can_reuse_an_existing_layout_family(tmp_path, monkey
             "config_name": "arx_x5_single",
             "layout_config_name": "arx_x5",
             "layout_task_name": "general_pickup",
-            "layout_filter": {
-                "target_position": {"label": "target", "xlim": [-0.25, 0.25], "ylim": [-0.2, 0.05]}
-            },
+            "layout_filter": {"target_position": {"label": "target", "xlim": [-0.25, 0.25], "ylim": [-0.2, 0.05]}},
             "layout_overrides": {"Geometry": {"camera_stand": {"default_pos": [-0.55, -0.47, 0.715]}}},
             "seed": 0,
         }
@@ -57,9 +55,7 @@ def test_layout_ids_select_exact_original_layouts(tmp_path, monkeypatch):
                 ]
             }
         }
-        (layout_dir / f"general_pickup_single_{layout_id}.json").write_text(
-            json.dumps(layout), encoding="utf-8"
-        )
+        (layout_dir / f"general_pickup_single_{layout_id}.json").write_text(json.dumps(layout), encoding="utf-8")
     monkeypatch.setattr(seed_manager, "ASSETS_PATH", str(tmp_path))
 
     manager = seed_manager.SeedManager(
@@ -153,9 +149,7 @@ def test_layout_asset_validation_accepts_hydrated_asset(tmp_path, monkeypatch):
     (layout_dir / "general_pickup_single_0.json").write_text(json.dumps(layout), encoding="utf-8")
     asset_dir = tmp_path / "Object" / "RoboDojo" / "Rigid" / "car" / "00011"
     asset_dir.mkdir(parents=True)
-    (asset_dir / "metadata.json").write_text(
-        json.dumps({"geometry": {"mass": 1.0}}), encoding="utf-8"
-    )
+    (asset_dir / "metadata.json").write_text(json.dumps({"geometry": {"mass": 1.0}}), encoding="utf-8")
     (asset_dir / "object.usdz").write_bytes(b"hydrated-usdz")
     monkeypatch.setattr(seed_manager, "ASSETS_PATH", str(tmp_path))
     manager = seed_manager.SeedManager(
