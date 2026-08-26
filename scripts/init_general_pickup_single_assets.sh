@@ -20,9 +20,20 @@ git -C "${ASSET_CACHE_DIR}" lfs fetch origin \
     --include="${LAYOUT_DIR}/general_pickup_*.json" --exclude=""
 git -C "${ASSET_CACHE_DIR}" lfs checkout -- "${LAYOUT_DIR}"
 
-mapfile -t layout_files < <(
+layout_files=()
+while IFS= read -r candidate; do
+    if jq -e '
+        [.Rigid | to_entries[] | .value[] | select(.label == "target") | .default_pos]
+        | length == 1
+          and .[0][0] >= -0.25 and .[0][0] <= 0.25
+          and .[0][1] >= -0.2 and .[0][1] <= 0.05
+    ' "${candidate}" >/dev/null; then
+        layout_files+=("${candidate}")
+        [[ "${#layout_files[@]}" -eq "${LAYOUT_COUNT}" ]] && break
+    fi
+done < <(
     find "${ASSET_CACHE_DIR}/${LAYOUT_DIR}" -maxdepth 1 -type f -name 'general_pickup_*.json' \
-        -printf '%p\n' | sort -V | head -n "${LAYOUT_COUNT}"
+        -printf '%p\n' | sort -V
 )
 [[ "${#layout_files[@]}" -eq "${LAYOUT_COUNT}" ]] || {
     echo "[task_assets] expected ${LAYOUT_COUNT} layouts, found ${#layout_files[@]}" >&2

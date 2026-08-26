@@ -1,6 +1,15 @@
 config_name: arx_x5_single
 layout_config_name: arx_x5
 layout_task_name: general_pickup
+layout_filter:
+  target_position:
+    label: target
+    xlim: [-0.25, 0.25]
+    ylim: [-0.2, 0.05]
+layout_overrides:
+  Geometry:
+    camera_stand:
+      default_pos: [-0.55, -0.47, 0.715]
 
 config:
   sim: sim_config

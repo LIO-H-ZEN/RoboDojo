@@ -1,4 +1,4 @@
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from copy import deepcopy
 import os
 from pathlib import Path
@@ -19,6 +19,8 @@ class SeedManager:
         self.config_name: str = str(self.config["config_name"])
         self.layout_config_name: str = str(self.config.get("layout_config_name", self.config_name))
         self.layout_task_name: str = str(self.config.get("layout_task_name", self.task_name))
+        self.layout_filter = self.config.get("layout_filter")
+        self.layout_overrides = self.config.get("layout_overrides")
 
         self.st_idx: int
         self.ed_idx: int
@@ -38,6 +40,7 @@ class SeedManager:
             [p for p in layout_dir.iterdir() if pattern.fullmatch(p.name)],
             key=lambda p: int(p.stem.rsplit("_", 1)[-1]),
         )
+        matching_files = [path for path in matching_files if self._layout_allowed(load_json(path))]
 
         matching_files = [str(p) for p in matching_files]
         self.seed_info = {}
@@ -96,7 +99,49 @@ class SeedManager:
         if file_path is None or not os.path.exists(file_path):
             raise ValueError(f"Scene layout file not found for seed {seed} at expected path {file_path}.")
         data = load_json(file_path)
+        self._apply_layout_overrides(data)
         return data
+
+    def _layout_allowed(self, data: Mapping[str, Any]) -> bool:
+        if self.layout_filter is None:
+            return True
+        unknown = set(self.layout_filter) - {"target_position"}
+        if unknown:
+            raise ValueError(f"Unsupported layout filters: {sorted(unknown)}")
+        target_filter = self.layout_filter.get("target_position")
+        if target_filter is None:
+            return True
+        label = str(target_filter.get("label", "target"))
+        matches = [
+            instance
+            for object_type in ("Rigid", "Dynamic", "Geometry", "Articulation", "Garment", "Fluid")
+            for instances in data.get(object_type, {}).values()
+            for instance in instances
+            if instance.get("label") == label
+        ]
+        if len(matches) != 1:
+            raise ValueError(f"Expected exactly one layout object labeled {label!r}, got {len(matches)}")
+        position = matches[0].get("default_pos")
+        if not isinstance(position, Sequence) or len(position) < 2:
+            raise ValueError(f"Layout target {label!r} has invalid default_pos: {position}")
+        xlim = target_filter["xlim"]
+        ylim = target_filter["ylim"]
+        return float(xlim[0]) <= float(position[0]) <= float(xlim[1]) and float(ylim[0]) <= float(
+            position[1]
+        ) <= float(ylim[1])
+
+    def _apply_layout_overrides(self, data: dict[str, Any]) -> None:
+        if self.layout_overrides is None:
+            return
+        for object_type, categories in self.layout_overrides.items():
+            if object_type not in data:
+                raise ValueError(f"Layout override type is absent: {object_type}")
+            for category, fields in categories.items():
+                instances = data[object_type].get(category)
+                if not instances:
+                    raise ValueError(f"Layout override category is absent: {object_type}.{category}")
+                for instance in instances:
+                    instance.update(deepcopy(dict(fields)))
 
     def eval_step(self):
         self._current_batch_seeds = None
