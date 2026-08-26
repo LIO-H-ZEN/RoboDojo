@@ -27,7 +27,9 @@ export PIP_USER=0
 export TERM=xterm-256color
 
 mkdir -p "${UV_CACHE_DIR}" "${BUILD_TMP_DIR}"
-uv venv --python 3.11 "${VENV_PATH}"
+if [[ ! -x "${VENV_PATH}/bin/python" ]]; then
+    uv venv --python 3.11 "${VENV_PATH}"
+fi
 PYTHON="${VENV_PATH}/bin/python"
 
 uv pip install --python "${PYTHON}" pip setuptools wheel
