@@ -109,11 +109,10 @@ gripper_move:
     base: "{j7}"
     sign: 1.0
     mimic: ["{j8}", {mimic_mult}, 0.]
-# link6 -> TCP distance along the approach axis. The finger joints sit at
-# z=0.1358 and the finger meshes span z in [0.06, 0.136] from link6, so the
-# fingertips are ~0.14m out (NOT 0.1358+4cm - the fingers extend backward
-# from their joint origin). TUNE from first-run videos.
-gripper_bias: 0.14
+# link6 -> TCP distance along the approach axis (exact: the piper_tcp
+# frame from the ManiSkill piper agent sits 0.1358m forward of link6,
+# at the finger-joint/fingertip plane).
+gripper_bias: 0.1358
 # joint7 range [0, 0.035]; joint8 is the mirrored finger.
 gripper_scale: [0.0, 0.035]
 delta_matrix: [[1,0,0],[0,1,0],[0,0,1]]
