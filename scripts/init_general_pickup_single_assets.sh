@@ -16,8 +16,9 @@ git -C "${ASSET_CACHE_DIR}" lfs install --local >/dev/null
 git -C "${ASSET_CACHE_DIR}" config lfs.concurrenttransfers "${LFS_CONCURRENT_TRANSFERS}"
 
 # Layout JSONs are small and must be materialized before extracting exact object instances.
-git -C "${ASSET_CACHE_DIR}" lfs pull \
+git -C "${ASSET_CACHE_DIR}" lfs fetch origin \
     --include="${LAYOUT_DIR}/general_pickup_*.json" --exclude=""
+git -C "${ASSET_CACHE_DIR}" lfs checkout -- "${LAYOUT_DIR}"
 
 mapfile -t layout_files < <(
     find "${ASSET_CACHE_DIR}/${LAYOUT_DIR}" -maxdepth 1 -type f -name 'general_pickup_*.json' \
@@ -59,7 +60,10 @@ for layout_file in "${layout_files[@]}"; do
 done
 
 include_csv="$(printf '%s\n' "${includes[@]}" | sort -u | paste -sd, -)"
-git -C "${ASSET_CACHE_DIR}" lfs pull --include="${include_csv}" --exclude=""
+git -C "${ASSET_CACHE_DIR}" lfs fetch origin --include="${include_csv}" --exclude=""
+
+mapfile -t checkout_paths < <(printf '%s\n' "${includes[@]}" | sed 's|/\*\*$||' | sort -u)
+git -C "${ASSET_CACHE_DIR}" lfs checkout -- "${checkout_paths[@]}"
 
 target="${ROOT_DIR}/Assets"
 [[ ! -e "${target}" ]] || {
