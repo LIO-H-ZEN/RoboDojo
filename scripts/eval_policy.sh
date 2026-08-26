@@ -130,6 +130,34 @@ for ext in "${KIT_ENABLE_EXTS[@]}"; do
   KIT_ARGS+=" --enable ${ext}"
 done
 
+# NVIDIA's Vulkan driverVersion field has only eight bits for the minor
+# component. Branches such as 535.261 therefore surface as 535.5 to Kit even
+# though driverInfo and NVML report the real, supported version. Bypass Kit's
+# range check only when the caller pins and both independent probes confirm the
+# exact real version; any mismatch fails before the simulator starts.
+expected_wrapped_driver="${ROBODOJO_EXPECT_WRAPPED_NVIDIA_DRIVER:-}"
+if [[ -n "${expected_wrapped_driver}" ]]; then
+  command -v nvidia-smi >/dev/null 2>&1 || {
+    echo "[eval_policy] nvidia-smi is required for the wrapped-driver gate" >&2
+    exit 2
+  }
+  command -v vulkaninfo >/dev/null 2>&1 || {
+    echo "[eval_policy] vulkaninfo is required for the wrapped-driver gate" >&2
+    exit 2
+  }
+  nvml_versions="$(nvidia-smi --query-gpu=driver_version --format=csv,noheader,nounits)"
+  IFS=$'\n' read -r nvml_driver _ <<< "${nvml_versions}"
+  vulkan_summary="$(vulkaninfo --summary 2>&1)"
+  vulkan_driver_info="$(awk -F'= ' '/^[[:space:]]*driverInfo/{print $2; exit}' <<< "${vulkan_summary}")"
+  vulkan_driver_version="$(awk -F'= ' '/^[[:space:]]*driverVersion/{print $2; exit}' <<< "${vulkan_summary}")"
+  if [[ "${nvml_driver}" != "${expected_wrapped_driver}" || "${vulkan_driver_info}" != "${expected_wrapped_driver}" ]]; then
+    echo "[eval_policy] wrapped-driver gate mismatch: expected=${expected_wrapped_driver} nvml=${nvml_driver:-missing} vulkan_info=${vulkan_driver_info:-missing}" >&2
+    exit 2
+  fi
+  KIT_ARGS+=" --/rtx/verifyDriverVersion/enabled=false"
+  echo "[eval_policy] verified wrapped NVIDIA driver: nvml=${nvml_driver} vulkan_version=${vulkan_driver_version}; disabling Kit's lossy version check"
+fi
+
 # Generated once per eval invocation. Carries the same identity through
 # os.execv inside main.py and bash-level retries below. Append $$ to
 # defuse same-second collisions when the same task/config is launched
