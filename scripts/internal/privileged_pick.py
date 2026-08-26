@@ -284,7 +284,12 @@ class PrivilegedPickController:
         maximum = world_vertices.max(axis=0)
         center = (minimum + maximum) / 2.0
         extents = maximum - minimum
-        grasp_point = center.copy()
+        # Grasp XY at the object ORIGIN (rotation-invariant body reference),
+        # not the rotated AABB center: with rotate_rand +-20deg the AABB
+        # center drifts off the object for elongated/flat shapes and the
+        # fingers straddle empty space beside it. bbox still provides the
+        # height (top/bottom) and width checks.
+        grasp_point = np.asarray(position_arr, dtype=float).copy()
         grasp_point[2] = minimum[2] + self.config.grasp_height_fraction * extents[2]
         horizontal_min = float(min(extents[0], extents[1]))
 

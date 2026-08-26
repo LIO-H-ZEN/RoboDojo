@@ -49,9 +49,15 @@ def get_robot_config():
             ),
             "gripper": ImplicitActuatorCfg(
                 joint_names_expr=["joint7", "joint8"],
+                # Cap grip force at the real gripper's ~10N payload rating,
+                # but reach it firmly: the Gazebo p=100 targets the real
+                # motor controller (integral action maintains force); as a
+                # pure sim PD it grips a 3cm object with only ~1.5N and the
+                # object slips out the moment the arm lifts. k=1000
+                # saturates at the 10N effort limit on contact.
                 effort_limit_sim=10.0,
-                stiffness=100.0,
-                damping=10.0,
+                stiffness=1000.0,
+                damping=100.0,
             ),
         },
     )
