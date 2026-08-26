@@ -421,6 +421,35 @@ def fk_probe(env, robot):
     )
 
 
+def camera_pose_probe(env, robot):
+    """Print authoritative USD camera/link poses without changing simulation state."""
+    rm = env.robot_manager
+    robot_key = rm.robot_key[rm.robot_list.index(robot)]
+    print(f"[camera-probe] robot bodies: {robot_key.body_names}", flush=True)
+
+    for link_name in ("link6", "gripper_base", "link7", "link8"):
+        if link_name not in robot_key.body_names:
+            continue
+        pose = rm.get_link_pose(robot, link_name, env_idx_list=[0], is_relative=False)[0]
+        print(f"[camera-probe] link {link_name:12s}: {np.round(pose, 5).tolist()}", flush=True)
+
+    for cam_id, cam_name in enumerate(env.camera_manager.camera_names[0]):
+        camera_xform = env.camera_manager.cameras_xform[0][cam_id]
+        local_pos, local_quat = camera_xform.get_local_pose()
+        extrinsics = env.camera_manager.get_camera_extrinsics(cam_id, env_id=0)
+        world_forward = extrinsics[:3, :3] @ np.array([0.0, 0.0, -1.0])
+        world_up = extrinsics[:3, :3] @ np.array([0.0, 1.0, 0.0])
+        print(
+            f"[camera-probe] {cam_name}: prim={env.camera_manager.cameras_xform_path[0][cam_id]} "
+            f"local_pos={np.round(np.asarray(local_pos.cpu()), 5).tolist()} "
+            f"local_quat_wxyz={np.round(np.asarray(local_quat.cpu()), 5).tolist()} "
+            f"world_pos={np.round(extrinsics[:3, 3], 5).tolist()} "
+            f"world_forward={np.round(world_forward, 5).tolist()} "
+            f"world_up={np.round(world_up, 5).tolist()}",
+            flush=True,
+        )
+
+
 def main():
     env_cfg = build_env_cfg()
     _, task_class = task_registry.load_task_class(args_cli.task_name)
@@ -483,6 +512,7 @@ def main():
                 env_idx=0, label="camera_stand", relative=False
             )
             print(f"[selfcheck] camera_stand pos     : {np.round(np.asarray(stand_pos), 3).tolist()}", flush=True)
+            camera_pose_probe(env, robot)
             fk_probe(env, robot)
         recorder.new_episode(ep, seed)
         recorder.grab()
