@@ -562,6 +562,12 @@ def main():
                 record_video_frames=not args_cli.no_video,
                 approach_axis_index=approach_axis,
                 orientation_tilt_degrees=tilt_degrees,
+                # Grasp deeper into the object: with the TCP at 55% height the
+                # fingers only straddle the object's top sliver when closing
+                # starts; 0.35 puts the grasp point near the lower third so
+                # the jaws engulf the object body.
+                grasp_height_fraction=0.35,
+                close_action_repeats=6,
             ),
         )
         report = controller.run()
