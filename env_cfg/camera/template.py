@@ -26,4 +26,11 @@ LARGE_D435 = {
     "vertical_aperture": 15.716,
     "clipping_range": (0.005, 10.0),
 }
+PIPER_POLICY = {
+    "resolution": (224, 224),
+    "focal_length": 10.0,
+    "horizontal_aperture": 20.0,
+    "vertical_aperture": 20.0,
+    "clipping_range": (0.01, 100.0),
+}
 PINHOLE = {"position": (0.0, 0.0, 0.0), "orientation": (1.0, 0.0, 0.0, 0.0)}

@@ -445,6 +445,12 @@ class RobotManager:
             ori = camera_cfg.get("ori", None)
             if ori is not None:
                 target_cfg["ori"] = ori
+            look_at_target = camera_cfg.get("look_at_target", None)
+            if look_at_target is not None:
+                target_cfg["look_at_target"] = look_at_target
+            look_at_up = camera_cfg.get("look_at_up", None)
+            if look_at_up is not None:
+                target_cfg["look_at_up"] = look_at_up
             type = camera_cfg.get("type", None)
             if type is not None:
                 target_cfg["type"] = type

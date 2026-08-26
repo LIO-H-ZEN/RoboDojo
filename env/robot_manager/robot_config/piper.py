@@ -26,14 +26,14 @@ def get_robot_config():
         init_state=ArticulationCfg.InitialStateCfg(
             joint_pos={
                 "joint1": 0.0,
-                "joint2": 0.0,
-                "joint3": 0.0,
+                "joint2": 1.57,
+                "joint3": -1.3485,
                 "joint4": 0.0,
                 "joint5": 0.0,
                 "joint6": 0.0,
-                # gripper home = closed: joint7 [0, 0.035], joint8 [-0.035, 0]
-                "joint7": 0.0,
-                "joint8": 0.0,
+                # Match the LiftAnything training home: gripper fully open.
+                "joint7": 0.035,
+                "joint8": -0.035,
             },
             pos=(0.25, -0.25, 0.0),
             rot=(0.707, 0, 0, 0.707),
@@ -43,15 +43,15 @@ def get_robot_config():
                 joint_names_expr=["joint[1-6]"],
                 effort_limit_sim=100.0,
                 velocity_limit_sim=5.0,
-                stiffness=4400.0,
-                damping=40.0,
+                stiffness=100.0,
+                damping=5.0,
                 armature=0.01,
             ),
             "gripper": ImplicitActuatorCfg(
                 joint_names_expr=["joint7", "joint8"],
-                effort_limit_sim=100.0,
-                stiffness=2300,
-                damping=100,
+                effort_limit_sim=10.0,
+                stiffness=100.0,
+                damping=10.0,
             ),
         },
     )

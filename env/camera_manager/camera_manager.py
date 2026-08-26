@@ -21,6 +21,7 @@ from env.seeding import seed_everywhere
 from env_cfg.camera.template import *
 from utils.rotations import (
     euler_angles_to_quat,
+    look_at_to_usd_camera_quat,
 )
 
 REAL_MAP = {
@@ -28,6 +29,7 @@ REAL_MAP = {
     "third_view": THIRD_VIEW,
     "d435": D435,
     "large_d435": LARGE_D435,
+    "PIPER_POLICY": PIPER_POLICY,
 }
 
 VISUAL_MAP = {
@@ -412,21 +414,49 @@ class CameraManager:
                         random_ori_max = torch.tensor(random_cfg.ori.max)
                         random_ori = torch.from_numpy(np.random.uniform(random_ori_min, random_ori_max))
 
-                if hasattr(camera_config.camera, "ori") and camera_config.camera.ori is not None:
-                    if torch.tensor(camera_config.camera.ori).shape[0] == 3:
-                        orientation = euler_angles_to_quat(
-                            torch.tensor(camera_config.camera.ori) + random_ori,
-                            degrees=True,
-                        )
-                    else:
-                        orientation = torch.tensor(camera_config.camera.ori)
-                else:
-                    orientation = euler_angles_to_quat(torch.tensor([0, 0, 0]))
+                configured_ori = camera_config.camera.get("ori")
+                look_at_target = camera_config.camera.get("look_at_target")
+                look_at_up = camera_config.camera.get("look_at_up")
+                if (look_at_target is None) != (look_at_up is None):
+                    raise ValueError(
+                        f"Camera {camera_name!r} requires both look_at_target and look_at_up."
+                    )
+                if configured_ori is not None and look_at_target is not None:
+                    raise ValueError(
+                        f"Camera {camera_name!r} must use either ori or look-at fields, not both."
+                    )
                 if hasattr(camera_config.camera, "pos") and camera_config.camera.pos is not None:
                     position = torch.tensor(camera_config.camera.pos)
                 else:
                     position = torch.tensor([0, 0, 1])
                 final_position = position + random_pos
+
+                if look_at_target is not None:
+                    if torch.any(random_ori != 0):
+                        raise ValueError(
+                            f"Camera {camera_name!r} cannot combine look-at orientation with ori randomization."
+                        )
+                    orientation = torch.from_numpy(
+                        look_at_to_usd_camera_quat(
+                            final_position.cpu().numpy(),
+                            look_at_target,
+                            look_at_up,
+                        )
+                    )
+                elif configured_ori is not None:
+                    if torch.tensor(configured_ori).shape[0] == 3:
+                        orientation = euler_angles_to_quat(
+                            torch.tensor(configured_ori) + random_ori,
+                            degrees=True,
+                        )
+                    else:
+                        if torch.any(random_ori != 0):
+                            raise ValueError(
+                                f"Camera {camera_name!r} quaternion ori cannot use Euler ori randomization."
+                            )
+                        orientation = torch.tensor(configured_ori)
+                else:
+                    orientation = euler_angles_to_quat(torch.tensor([0, 0, 0]))
                 cur_camera_xform.set_local_pose(
                     final_position,
                     orientation,

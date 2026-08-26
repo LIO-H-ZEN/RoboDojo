@@ -1,0 +1,40 @@
+annotator:
+  common:
+    enabled: True
+    rgb_capture:
+      type: rgb
+      device: cpu
+  cam_head:
+    enabled: True
+    rgb_capture:
+      type: rgb
+      device: cpu
+  cam_wrist:
+    enabled: True
+    rgb_capture:
+      type: rgb
+      device: cpu
+  cam_side:
+    enabled: True
+    rgb_capture:
+      type: rgb
+      device: cpu
+
+# The training cameras were expressed in a PIPER base frame at
+# [-0.35, 0, 0].  These world poses apply RoboDojo's Rz(+90 deg) base
+# rotation and [0, -0.45, 0.765] translation exactly.
+cam_head:
+  camera:
+    type: PIPER_POLICY
+    mesh: pinhole
+    pos: [0.0, -0.20, 1.215]
+    look_at_target: [0.0, -0.07, 0.845]
+    look_at_up: [0.0, 0.0, 1.0]
+
+cam_side:
+  camera:
+    type: PIPER_POLICY
+    mesh: pinhole
+    pos: [0.30, 0.08, 1.025]
+    look_at_target: [0.0, -0.07, 0.845]
+    look_at_up: [0.0, 0.0, 1.0]

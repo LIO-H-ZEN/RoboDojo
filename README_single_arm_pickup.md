@@ -15,7 +15,7 @@ pool and clutter, but driven by **one centered Piper arm**.
 | `env/robot_manager/robot_class/piper.py` + `robot_config/piper.py` | Piper robot class + IsaacLab articulation cfg (registered in `robot_manager.py`) |
 | `env_cfg/robot/_robot_info.json` | `single_piper` action dims (`arm_dim: [6]`, `ee_dim: [1]`) |
 | `env_cfg/piper_single.yml` | eval env cfg (`--env-cfg piper_single`) |
-| `env_cfg/camera/camera_config_single.yml` | `cam_head` + `cam_wrist` (no left/right prefixes) |
+| `env_cfg/camera/camera_config_piper_policy.yml` | training-matched `cam_head` + `cam_wrist` + `cam_side` at 224×224 |
 | `env_cfg/scene/single_arm.yml` | default scene with the head-camera tripod relocated |
 | `scripts/internal/privileged_pick.py` | ground-truth-guided pick controller (QA) |
 | `scripts/internal/scripted_single_arm_pickup.py` | policy-free validation runner |
@@ -67,6 +67,10 @@ python scripts/internal/build_piper_assets.py \
     --piper-src /path/to/piper_description --convert --headless
 ```
 
+The zero-shot policy reproduction pins `piper_ros/noetic` to
+`ac41fcbcdda598f01b51cf6175ed9a24d0dacadc`; do not build the asset from a
+moving branch head.
+
 The bootstrap:
 
 - copies `piper_description.urdf` + STL meshes, rewriting `package://` mesh
@@ -74,7 +78,8 @@ The bootstrap:
 - parses the URDF and generates `robot_config.yml` (joint1-6 revolute arm;
   joint7/8 prismatic mirrored fingers with mimic −1.0, range [0, 0.035];
   `gripper_bias` 0.18 = link6→TCP, an estimate — tune from first-run videos)
-  and `curobo.yml` (x5-equivalent structure: full 8-joint cspace with
+  including a simulation-only `cam_wrist` mounted directly on the existing
+  `gripper_base` link, and `curobo.yml` (x5-equivalent structure: full 8-joint cspace with
   explicit weights — omitting them crashes curobo's solver core with an
   object-dtype `np.array(None)`; collision spheres omitted since the
   scripted validation is IK-only);
@@ -103,9 +108,9 @@ down — the exact symptom of the first piper bring-up run.
 
 ### Known limitations
 
-- **No wrist camera yet**: the piper URDF has no camera link (the x5 USD
-  ships one), so only `cam_head` is available. Mounting a camera on
-  `gripper_base` requires injecting a link into the URDF before conversion.
+- **Camera appearance is sim-to-sim, not pixel-identical**: camera intrinsics,
+  optical pose and input resolution match LiftAnything training, while renderer,
+  lighting and RoboDojo object assets remain intentionally unchanged.
 - **Ring/hollow objects** (e.g. `tiara`, `donut`, `frame`): the scripted
   controller grasps the bbox **center**, which is empty space for such shapes.
   These are reported as fails — a limitation of the scripted checker, not of

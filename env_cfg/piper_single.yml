@@ -1,13 +1,24 @@
 config_name: piper_single
+layout_config_name: arx_x5
+layout_task_name: general_pickup
+layout_filter:
+  target_position:
+    label: target
+    xlim: [-0.25, 0.25]
+    ylim: [-0.25, 0.0]
+layout_overrides:
+  Geometry:
+    camera_stand:
+      default_pos: [-0.55, -0.47, 0.715]
 
 config:
   sim: sim_config
   scene: single_arm
   robot: single_piper
-  camera: camera_config_single
+  camera: camera_config_piper_policy
 
 observation:
-  collect_freq: 25
+  collect_freq: 20
   robot:
     joint_states: true
     world_ee_state: true

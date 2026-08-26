@@ -111,6 +111,14 @@ delta_matrix: [[1,0,0],[0,1,0],[0,0,1]]
 global_trans_matrix: [[1,0,0],[0,-1,0],[0,0,-1]] # for curobo
 dual_arm: False
 grasp_camera_reference_axis: [1, 0, 0] # in base_link frame
+camera:
+  - name: cam_wrist
+    link: gripper_base
+    type: PIPER_POLICY
+    mesh: pinhole
+    pos: [0.045, 0.0, 0.045]
+    look_at_target: [0.0, 0.0, 0.180]
+    look_at_up: [0.0, 1.0, 0.0]
 """
     path = os.path.join(target, "robot_config.yml")
     open(path, "w", encoding="utf-8").write(content)

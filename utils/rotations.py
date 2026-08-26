@@ -50,3 +50,44 @@ def euler_to_quat(euler: list[float], order="xyz") -> list[float]:
     rot = R.from_euler(order, euler, degrees=True)
     quat = rot.as_quat()  # Returns (x, y, z, w)
     return [quat[3], quat[0], quat[1], quat[2]]  # Convert to (w, x, y, z)
+
+
+def look_at_to_usd_camera_quat(eye, target, up) -> np.ndarray:
+    """Return a scalar-first quaternion for a USD camera look-at pose.
+
+    USD cameras look along local ``-Z`` with local ``+Y`` as up.  This
+    preserves the optical pose of ManiSkill's SAPIEN look-at convention
+    while expressing it in the convention consumed by Isaac Sim cameras.
+    """
+    eye = np.asarray(eye, dtype=np.float64)
+    target = np.asarray(target, dtype=np.float64)
+    up = np.asarray(up, dtype=np.float64)
+    for name, value in (("eye", eye), ("target", target), ("up", up)):
+        if value.shape != (3,):
+            raise ValueError(f"{name} must have shape (3,), got {value.shape}")
+        if not np.all(np.isfinite(value)):
+            raise ValueError(f"{name} must contain only finite values, got {value}")
+
+    forward = target - eye
+    forward_norm = np.linalg.norm(forward)
+    if forward_norm < 1e-8:
+        raise ValueError("look-at eye and target must be different")
+    forward /= forward_norm
+
+    up_norm = np.linalg.norm(up)
+    if up_norm < 1e-8:
+        raise ValueError("look-at up vector must be non-zero")
+    up /= up_norm
+
+    right = np.cross(forward, up)
+    right_norm = np.linalg.norm(right)
+    if right_norm < 1e-8:
+        raise ValueError("look-at up vector must not be parallel to the viewing direction")
+    right /= right_norm
+    camera_up = np.cross(right, forward)
+
+    # Columns map USD camera axes (+X right, +Y up, -Z forward) to the
+    # parent frame.
+    rotation = np.stack([right, camera_up, -forward], axis=1)
+    quat_xyzw = R.from_matrix(rotation).as_quat()
+    return quat_xyzw[[3, 0, 1, 2]].astype(np.float32)
