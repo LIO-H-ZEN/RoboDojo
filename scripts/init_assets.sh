@@ -16,7 +16,7 @@ HF_REVISION="${HF_REVISION:-main}"
 HF_REPO_URL="${HF_REPO_URL:-https://huggingface.co/datasets/${HF_REPO_ID}}"
 
 TARGET_DIR="${CURRENT_DIR}/Assets"
-ASSET_CACHE_DIR="${CURRENT_DIR}/.cache/robodojo_assets_repo"
+ASSET_CACHE_DIR="${ASSET_CACHE_DIR:-${CURRENT_DIR}/.cache/robodojo_assets_repo}"
 REQUIRED_ASSET_SUBDIRS=(Robots Object Material Eval_Layout)
 
 assets_ready() {
