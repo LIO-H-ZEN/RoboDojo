@@ -43,11 +43,34 @@ class SeedManager:
         matching_files = [path for path in matching_files if self._layout_allowed(load_json(path))]
 
         matching_files = [str(p) for p in matching_files]
-        self.seed_info = {}
-        for idx, file_path in enumerate(matching_files):
-            self.seed_info[idx] = {"scene_layout": file_path}
+        self.seed_info = {
+            layout_id: {"scene_layout": file_path}
+            for layout_id, file_path in enumerate(matching_files)
+        }
 
         all_layout_ids = list(range(len(matching_files)))
+        requested_layout_ids = self.config.get("layout_ids")
+        if requested_layout_ids is not None:
+            if isinstance(requested_layout_ids, (str, bytes)) or not isinstance(
+                requested_layout_ids, Sequence
+            ):
+                raise ValueError("layout_ids must be a sequence of integers")
+            selected_layout_ids = [int(layout_id) for layout_id in requested_layout_ids]
+            if not selected_layout_ids:
+                raise ValueError("layout_ids must not be empty")
+            if len(set(selected_layout_ids)) != len(selected_layout_ids):
+                raise ValueError(f"layout_ids must be unique: {selected_layout_ids}")
+            invalid_layout_ids = [
+                layout_id for layout_id in selected_layout_ids if layout_id not in self.seed_info
+            ]
+            if invalid_layout_ids:
+                raise ValueError(
+                    f"layout_ids out of range: {invalid_layout_ids}; "
+                    f"available=0..{len(matching_files) - 1}"
+                )
+            all_layout_ids = selected_layout_ids
+            print(f"[SeedManager] init_eval layout shard: layout_ids={all_layout_ids}")
+
         excluded = set(int(s) for s in (completed_layout_ids or [])) | set(int(s) for s in (abandoned_layout_ids or []))
         if excluded:
             self.seed_list: List[int] = [s for s in all_layout_ids if s not in excluded]

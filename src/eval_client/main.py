@@ -326,6 +326,17 @@ def main():
         _env_eval_num = os.environ.get("EVAL_NUM")
         if str(_env_eval_num).lower() != "native":
             eval_num = min(int(_env_eval_num), int(eval_num))
+    if os.environ.get("EVAL_LAYOUT_IDS"):
+        raw_layout_ids = os.environ["EVAL_LAYOUT_IDS"]
+        layout_id_tokens = [token.strip() for token in raw_layout_ids.split(",")]
+        if not layout_id_tokens or any(not token for token in layout_id_tokens):
+            raise ValueError(f"Invalid EVAL_LAYOUT_IDS: {raw_layout_ids!r}")
+        layout_ids = [int(token) for token in layout_id_tokens]
+        if len(set(layout_ids)) != len(layout_ids):
+            raise ValueError(f"EVAL_LAYOUT_IDS must contain unique IDs: {layout_ids}")
+        eval_cfg["layout_ids"] = layout_ids
+        eval_num = min(eval_num, len(layout_ids))
+        print(f"[main] layout shard: layout_ids={layout_ids} eval_num={eval_num}")
     eval_cfg["eval_num"] = eval_num
 
     OmegaConf.update(
