@@ -123,7 +123,7 @@ def test_one_click_launcher_dry_run_prepares_current_head(tmp_path, asset_mode):
             "--allow-dirty",
             "--dry-run",
         ],
-        cwd=repo_root,
+        cwd=repo_root.parent,
         check=False,
         capture_output=True,
         text=True,

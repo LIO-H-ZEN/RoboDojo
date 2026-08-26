@@ -229,7 +229,8 @@ else
   done
 fi
 
-"${EVAL_ENV}/bin/python" "${ROOT_DIR}/scripts/internal/validate_pi05_piper_eval_assets.py" \
+PYTHONPATH="${ROOT_DIR}:${PYTHONPATH:-}" "${EVAL_ENV}/bin/python" \
+  "${ROOT_DIR}/scripts/internal/validate_pi05_piper_eval_assets.py" \
   --assets-root "${RUNTIME_DIR}/Assets" \
   --layout-ids "${LAYOUT_IDS}" \
   --seed "${SEED}"
