@@ -15,6 +15,7 @@ pool and clutter, but driven by **one centered Piper arm**.
 | `env/robot_manager/robot_class/piper.py` + `robot_config/piper.py` | Piper robot class + IsaacLab articulation cfg (registered in `robot_manager.py`) |
 | `env_cfg/robot/_robot_info.json` | `single_piper` action dims (`arm_dim: [6]`, `ee_dim: [1]`) |
 | `env_cfg/piper_single.yml` | eval env cfg (`--env-cfg piper_single`) |
+| `env_cfg/sim/sim_config_piper_policy.yml` | exact 20 Hz policy cadence (10 × 0.005 s physics steps) |
 | `env_cfg/camera/camera_config_piper_policy.yml` | training-matched `cam_head` + `cam_wrist` + `cam_side` at 224×224 |
 | `env_cfg/scene/single_arm.yml` | default scene with the head-camera tripod relocated |
 | `scripts/internal/privileged_pick.py` | ground-truth-guided pick controller (QA) |

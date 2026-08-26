@@ -12,7 +12,7 @@ layout_overrides:
       default_pos: [-0.55, -0.47, 0.715]
 
 config:
-  sim: sim_config
+  sim: sim_config_piper_policy
   scene: single_arm
   robot: single_piper
   camera: camera_config_piper_policy
