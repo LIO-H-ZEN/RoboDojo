@@ -42,6 +42,11 @@ def repo_root():
     return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
+def target_dir(assets_root):
+    root = assets_root or os.path.join(repo_root(), "Assets")
+    return os.path.join(os.path.abspath(root), "Robots", "piper")
+
+
 def parse_urdf(urdf_path):
     src = open(urdf_path, encoding="utf-8").read()
     joints = []
@@ -237,7 +242,7 @@ def main():
     args, _ = parser.parse_known_args()  # ignore AppLauncher passthrough flags
     global CONVERT_ARGS
     CONVERT_ARGS = sys.argv[1:]
-    target = args.assets_root or os.path.join(repo_root(), "Assets", "Robots", "piper")
+    target = target_dir(args.assets_root)
 
     urdf_path = copy_assets(args.piper_src, target)
     joints = parse_urdf(urdf_path)

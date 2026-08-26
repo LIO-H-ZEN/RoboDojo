@@ -64,7 +64,9 @@ python scripts/internal/build_piper_assets.py \
 
 # server (robodojo env): also convert the URDF to piper.usd
 python scripts/internal/build_piper_assets.py \
-    --piper-src /path/to/piper_description --convert --headless
+    --piper-src /path/to/piper_description \
+    --assets-root /path/to/Assets \
+    --convert --headless
 ```
 
 The zero-shot policy reproduction pins `piper_ros/noetic` to
