@@ -128,6 +128,17 @@ down — the exact symptom of the first piper bring-up run.
 ## Policy evaluation (once a policy exists)
 
 ```bash
+# Native PI-0.5 PIPER zero-shot policy: one-command worker launch. This
+# includes GPU/asset/LFS preflight, EULA setup, fixed layouts 0-9, result and
+# video validation, and optional HDFS archiving.
+bash scripts/run_pi05_piper_zero_shot.sh \
+    --ckpt /path/to/checkpoint \
+    --policy-env /path/to/openpi-uv \
+    --eval-env /path/to/robodojo-uv \
+    --assets-root /path/to/hydrated/Assets \
+    --hdfs-output hdfs://your/result/directory
+
+# Generic policy entry point:
 bash scripts/robodojo.sh eval \
     --task general_pickup_single \
     --env-cfg piper_single \

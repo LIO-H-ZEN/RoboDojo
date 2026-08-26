@@ -5,6 +5,7 @@
 | Script | Purpose |
 | --- | --- |
 | [robodojo.sh](robodojo.sh) | Main CLI: `doctor`, `eval`, `client`, `smoke`, `benchmark`, `dimensions`, `summarize`, `tasks` |
+| [run_pi05_piper_zero_shot.sh](run_pi05_piper_zero_shot.sh) | One-command native PI-0.5 PIPER zero-shot eval on a GPU worker |
 | [install.sh](install.sh) | One-time environment setup (conda, Isaac Sim, submodules) |
 | [init_assets.sh](init_assets.sh) | Download robot/object assets |
 | [eval_policy.sh](eval_policy.sh) | Isaac Sim eval client (called by `robodojo.sh client` and XPolicyLab) |
@@ -33,6 +34,26 @@ bash scripts/robodojo.sh benchmark \
   --policy-env <ENV> \
   --eval-num native
 ```
+
+Run the fixed-layout native PIPER zero-shot evaluation after preparing the uv
+environments and hydrated asset archive from
+[`README_single_arm_pickup.md`](../README_single_arm_pickup.md):
+
+```bash
+bash scripts/run_pi05_piper_zero_shot.sh \
+  --ckpt /path/to/checkpoint \
+  --policy-env /path/to/openpi-uv \
+  --eval-env /path/to/robodojo-uv \
+  --assets-root /path/to/hydrated/Assets
+```
+
+The launcher uses an isolated archive of the current committed RoboDojo HEAD,
+links the checked-out submodules, validates PIPER and every selected layout's
+hydrated object assets before Isaac Sim starts, accepts the Isaac EULA, and
+writes logs/results under `eval_result/`. Pass `--dry-run` for a GPU-free
+preflight. The launcher can also hydrate a temporary checkout from
+`--assets-archive` plus `--common-assets`; pass `--hdfs-output hdfs://...` to
+archive the completed result.
 
 Available dimensions are `generalization`, `memory`, `precision`,
 `long-horizon`, and `open`. Generalization includes both the 12 standard tasks
