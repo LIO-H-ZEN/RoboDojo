@@ -114,6 +114,11 @@ check_path dir "${ROOT_DIR}/Assets/Eval_Layout/RoboDojo" "eval layouts"
 check_path dir "${ROOT_DIR}/Assets/Material" "materials"
 if [[ "${env_cfg}" == arx_x5* ]]; then
   check_path file "${ROOT_DIR}/Assets/Robots/x5/curobo.yml" "X5 CuRobo config"
+elif [[ "${env_cfg}" == piper* ]]; then
+  check_path file "${ROOT_DIR}/Assets/Robots/piper/piper.usd" "PIPER USD"
+  check_path file "${ROOT_DIR}/Assets/Robots/piper/piper.urdf" "PIPER URDF"
+  check_path file "${ROOT_DIR}/Assets/Robots/piper/robot_config.yml" "PIPER embodiment config"
+  check_path file "${ROOT_DIR}/Assets/Robots/piper/curobo.yml" "PIPER CuRobo config"
 fi
 
 if [[ -n "${policy_dir}" && "${skip_policy}" != "true" ]]; then
