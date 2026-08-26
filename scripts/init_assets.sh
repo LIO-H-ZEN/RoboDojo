@@ -14,6 +14,7 @@ error() { echo -e "\e[1;31m[ERROR] $*\e[0m"; exit 1; }
 HF_REPO_ID="${HF_REPO_ID:-RoboDojo-Benchmark/RoboDojo}"
 HF_REVISION="${HF_REVISION:-main}"
 HF_REPO_URL="${HF_REPO_URL:-https://huggingface.co/datasets/${HF_REPO_ID}}"
+LFS_CONCURRENT_TRANSFERS="${LFS_CONCURRENT_TRANSFERS:-32}"
 
 TARGET_DIR="${CURRENT_DIR}/Assets"
 ASSET_CACHE_DIR="${ASSET_CACHE_DIR:-${CURRENT_DIR}/.cache/robodojo_assets_repo}"
@@ -98,11 +99,12 @@ download_assets() {
     fi
   fi
 
-  git -C "${ASSET_CACHE_DIR}" sparse-checkout set Assets
-  git -C "${ASSET_CACHE_DIR}" checkout "${HF_REVISION}"
+  GIT_LFS_SKIP_SMUDGE=1 git -C "${ASSET_CACHE_DIR}" sparse-checkout set Assets
+  GIT_LFS_SKIP_SMUDGE=1 git -C "${ASSET_CACHE_DIR}" checkout "${HF_REVISION}"
 
   info "Pulling only Assets/** LFS objects..."
   git -C "${ASSET_CACHE_DIR}" lfs install --local >/dev/null
+  git -C "${ASSET_CACHE_DIR}" config lfs.concurrenttransfers "${LFS_CONCURRENT_TRANSFERS}"
   git -C "${ASSET_CACHE_DIR}" lfs pull --include="Assets/**" --exclude=""
 
   ln -s "${ASSET_CACHE_DIR}/Assets" "${TARGET_DIR}"
