@@ -118,7 +118,10 @@ dual_arm: False
 grasp_camera_reference_axis: [1, 0, 0] # in base_link frame
 camera:
   - name: cam_wrist
-    link: gripper_base
+    # Isaac's unmerged fixed-joint import nests every robot link below the
+    # synthetic root_joint prim. CameraManager consumes a USD prim path, not
+    # an articulation body name.
+    link: root_joint/gripper_base
     type: PIPER_POLICY
     mesh: pinhole
     pos: [0.045, 0.0, 0.045]

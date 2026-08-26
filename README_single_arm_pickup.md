@@ -81,8 +81,9 @@ The bootstrap:
 - parses the URDF and generates `robot_config.yml` (joint1-6 revolute arm;
   joint7/8 prismatic mirrored fingers with mimic −1.0, range [0, 0.035];
   `gripper_bias` 0.18 = link6→TCP, an estimate — tune from first-run videos)
-  including a simulation-only `cam_wrist` mounted directly on the existing
-  `gripper_base` link, and `curobo.yml` (x5-equivalent structure: full 8-joint cspace with
+  including a simulation-only `cam_wrist` mounted on the imported
+  `root_joint/gripper_base` USD prim (the URDF importer adds `root_joint`),
+  and `curobo.yml` (x5-equivalent structure: full 8-joint cspace with
   explicit weights — omitting them crashes curobo's solver core with an
   object-dtype `np.array(None)`; collision spheres omitted since the
   scripted validation is IK-only);
