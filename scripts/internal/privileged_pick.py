@@ -287,14 +287,63 @@ class PrivilegedPickController:
         maximum = world_vertices.max(axis=0)
         center = (minimum + maximum) / 2.0
         extents = maximum - minimum
-        # Grasp XY at the object ORIGIN (rotation-invariant body reference),
-        # not the rotated AABB center: with rotate_rand +-20deg the AABB
-        # center drifts off the object for elongated/flat shapes and the
-        # fingers straddle empty space beside it. bbox still provides the
-        # height (top/bottom) and width checks.
+        # Grasp point search: elongated objects (whisk 35cm, shovel 28cm vs
+        # a 7cm jaw span) cannot be grasped at their center at all - the
+        # origin often hovers mid-handle where nothing is graspable. Sample
+        # points along the object's long horizontal axis and pick the one
+        # whose LOCAL width fits the jaw and that is closest to the object
+        # center (mass balance). Local width is approximated by linearly
+        # tapering from the full bbox extent at the center to the short
+        # extent at the ends - a conservative capsule model.
         grasp_point = np.asarray(position_arr, dtype=float).copy()
         grasp_point[2] = minimum[2] + self.config.grasp_height_fraction * extents[2]
         horizontal_min = float(min(extents[0], extents[1]))
+        max_jaw = float(self.config.expected_max_grasp_width_m)
+        if max(extents[0], extents[1]) > max_jaw and max(extents[0], extents[1]) > 0:
+            long_i = 0 if extents[0] >= extents[1] else 1
+            short_i = 1 - long_i
+            long_ext = float(extents[long_i])
+            # candidate offsets along the long axis (world frame)
+            offsets = np.linspace(-0.4, 0.4, 17) * long_ext
+            best = None
+            for off in offsets:
+                # local width: capsule taper (center = full extent, ends = short)
+                t = abs(off) / (0.5 * long_ext)
+                local_w = short_i  # placeholder, replaced below
+                local_w = float(extents[short_i]) * (1.0 - 0.5 * t)  # taper guess
+                if local_w > max_jaw * 0.9:
+                    continue
+                # world direction of the object's long axis (from the bbox
+                # corners projected to the object height)
+                v0 = world_vertices[0]
+                corners = world_vertices[:4] if len(world_vertices) >= 4 else world_vertices
+                pts = np.asarray(corners, dtype=float)
+                # long axis direction: PCA-free - use the bbox diagonal in XY
+                diag = np.array([maximum[0] - minimum[0], maximum[1] - minimum[1], 0.0])
+                norm = np.linalg.norm(diag)
+                if norm < 1e-6:
+                    break
+                diag = diag / norm
+                if long_i == 0 and abs(diag[0]) < abs(diag[1]):
+                    diag = np.array([diag[1], -diag[0], 0.0])  # rotate to X-major
+                elif long_i == 1 and abs(diag[1]) < abs(diag[0]):
+                    diag = np.array([-diag[1], diag[0], 0.0])  # rotate to Y-major
+                cand = grasp_point.copy()
+                cand[:2] = cand[:2] + diag[:2] * off
+                # keep inside bbox
+                if not (minimum[0] <= cand[0] <= maximum[0] and minimum[1] <= cand[1] <= maximum[1]):
+                    continue
+                cost = abs(off) + 0.3 * local_w
+                if best is None or cost < best[0]:
+                    best = (cost, cand, local_w, float(off))
+            if best is not None:
+                _, grasp_point, local_w, off = best
+                self.report.setdefault("grasp_search", {})
+                self.report["grasp_search"] = {
+                    "object_center_offset_m": off,
+                    "local_width_m": local_w,
+                    "long_axis_index": long_i,
+                }
 
         return {
             "instance_name": target_name,
@@ -335,13 +384,15 @@ class PrivilegedPickController:
         return bases
 
     def _ordered_yaw_candidates(self, base_mat: np.ndarray, long_axis: int | None) -> list[float]:
-        """Yaw candidates, shape-aware order: opening across the short axis.
+        """Yaw candidates, shape-aware: opening strictly across the short axis.
 
         The gripper's fingers separate along the link axis given by
         opening_axis_index (piper: Y). For an elongated object the opening
-        direction must be perpendicular to the object's long axis - order the
-        yaw sweep by that alignment. Without opening_axis_index (x5) or for
-        near-square objects the original fixed order applies.
+        MUST be perpendicular to the long axis - anything else puts the jaws
+        across a span wider than the jaw span and the fingers press on the
+        object's ends without gripping. Elongated objects therefore get only
+        the perpendicular yaws (sorted by exactness); near-square objects and
+        x5 (no opening axis) keep the full ordered list.
         """
         yaws = [0.0, 45.0, -45.0, 90.0, -90.0, 135.0, -135.0, 180.0]
         if self.config.opening_axis_index is None or long_axis is None:
@@ -352,6 +403,10 @@ class PrivilegedPickController:
             opening = (yaw_mat @ base_mat)[:, self.config.opening_axis_index]
             return abs(float(opening[long_axis]))  # ~0 = perpendicular = good
 
+        if long_axis is not None:
+            # strictly perpendicular only
+            perp = [y for y in yaws if opening_alignment(y) < 0.5]
+            return sorted(perp, key=opening_alignment) if perp else yaws
         return sorted(yaws, key=opening_alignment)
 
     def _select_robot(self, target: Mapping[str, Any]) -> dict[str, Any]:
