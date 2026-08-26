@@ -24,7 +24,7 @@ Options:
   --env-cfg NAME        env_cfg stem to validate (default: arx_x5)
   --task NAME           Task name to validate (default: stack_bowls)
   --ckpt NAME           Optional checkpoint directory under policy checkpoints
-  --sim-env NAME        Simulator conda env for Isaac imports (default: RoboDojo)
+  --sim-env NAME|PATH   Simulator Conda env or virtualenv path (default: RoboDojo)
   --policy-env NAME     Optional policy conda env to check
   --summary PATH        Write JSON summary to PATH
   --skip-isaac          Skip isaacsim/isaaclab import check
@@ -198,7 +198,11 @@ else
   record "FAIL" "python import" "cannot import env.global_configs"
 fi
 
-if [[ "${skip_conda}" == "true" ]]; then
+sim_python=""
+if [[ -x "${sim_env}/bin/python" ]]; then
+  sim_python="${sim_env}/bin/python"
+  record "PASS" "sim virtual environment" "${sim_env}"
+elif [[ "${skip_conda}" == "true" ]]; then
   record "WARN" "conda envs" "skipped by --skip-conda"
 elif command -v conda >/dev/null 2>&1; then
   envs="$(conda env list | awk 'NF && $1 !~ /^#/ {print $1}')"
@@ -222,6 +226,15 @@ fi
 
 if [[ "${skip_isaac}" == "true" ]]; then
   record "WARN" "Isaac imports" "skipped by --skip-isaac"
+elif [[ -n "${sim_python}" ]]; then
+  if "${sim_python}" - <<'PY'; then
+import isaacsim  # noqa: F401
+import isaaclab  # noqa: F401
+PY
+    record "PASS" "Isaac imports" "isaacsim and isaaclab import in ${sim_env}"
+  else
+    record "FAIL" "Isaac imports" "isaacsim/isaaclab import failed in ${sim_env}"
+  fi
 elif command -v conda >/dev/null 2>&1; then
   if conda run -n "${sim_env}" python - <<'PY'; then
 import isaacsim  # noqa: F401
