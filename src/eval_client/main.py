@@ -63,8 +63,8 @@ parser.add_argument("--seed", type=int, required=True, help="policy seed for eva
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 
-# Safe to import before AppLauncher: env is a namespace package (no __init__)
-# and GLOBAL_CONFIGS only imports os, so this pulls in no app-dependent code.
+# Safe to import before AppLauncher: env.__init__ and GLOBAL_CONFIGS do not
+# import app-dependent code.
 from env.global_configs import BENCHMARK, ROOT_DIR
 
 task_registry = importlib.import_module(f"task.{BENCHMARK}.task_registry")
@@ -445,4 +445,15 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        import traceback
+
+        traceback.print_exc()
+        sys.stdout.flush()
+        sys.stderr.flush()
+        # Kit can install a process-level exception hook that normalizes the
+        # interpreter status. Exit at the OS boundary so orchestration never
+        # reports a failed simulator run as successful.
+        os._exit(1)

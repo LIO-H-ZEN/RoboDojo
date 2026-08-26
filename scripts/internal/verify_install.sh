@@ -112,6 +112,9 @@ check_path dir "${ROOT_DIR}/Assets/Robots" "robot assets"
 check_path dir "${ROOT_DIR}/Assets/Object/RoboDojo" "object assets"
 check_path dir "${ROOT_DIR}/Assets/Eval_Layout/RoboDojo" "eval layouts"
 check_path dir "${ROOT_DIR}/Assets/Material" "materials"
+if [[ "${env_cfg}" == arx_x5* ]]; then
+  check_path file "${ROOT_DIR}/Assets/Robots/x5/curobo.yml" "X5 CuRobo config"
+fi
 
 if [[ -n "${policy_dir}" && "${skip_policy}" != "true" ]]; then
   check_path file "${policy_dir}/eval.sh" "policy eval.sh"

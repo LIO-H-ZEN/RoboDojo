@@ -83,6 +83,11 @@ target="${ROOT_DIR}/Assets"
 }
 ln -s "${ASSET_CACHE_DIR}/Assets" "${target}"
 
+# Robot planner configs are shipped as *_tmp.yml templates containing the
+# absolute asset-root placeholder. Materialize them only after the final Assets
+# path exists so CuRobo never sees a missing or stale path.
+(cd "${ROOT_DIR}" && python3 utils/update_embodiment_config_path.py)
+
 for required in Robots/x5 Object/RoboDojo Material Room Eval_Layout/RoboDojo/arx_x5; do
     [[ -d "${target}/${required}" ]] || {
         echo "[task_assets] missing required directory: ${target}/${required}" >&2
