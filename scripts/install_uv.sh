@@ -67,7 +67,6 @@ import torch
 
 print(f"isaacsim={importlib.metadata.version('isaacsim')}")
 print(f"torch={torch.__version__}")
-print(f"cuda_available={torch.cuda.is_available()}")
 PY
 
 echo "[install_uv] ready: ${VENV_PATH}"
