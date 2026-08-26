@@ -501,7 +501,11 @@ def main():
     # grasp quaternion table and approach-axis column differ accordingly.
     is_piper = any(r.robot_name == "piper" for r in env.robot_manager.robot_list)
     approach_axis = 2 if is_piper else 0
-    print(f"[scripted] robot tool approach axis index: {approach_axis}")
+    # The piper's wrist pitch (joint5 +-70deg) cannot reach an exact vertical
+    # tool over much of the workspace; offer +-10deg tilted orientations it
+    # can achieve exactly (same trick as the x5's "little_left/right").
+    tilt_degrees = (-10.0, 10.0) if is_piper else ()
+    print(f"[scripted] robot tool approach axis index: {approach_axis}, tilt variants: {tilt_degrees}")
 
     results = []
     for ep in range(args_cli.episodes):
@@ -554,7 +558,11 @@ def main():
 
         controller = PrivilegedPickController(
             env,
-            PrivilegedPickConfig(record_video_frames=not args_cli.no_video, approach_axis_index=approach_axis),
+            PrivilegedPickConfig(
+                record_video_frames=not args_cli.no_video,
+                approach_axis_index=approach_axis,
+                orientation_tilt_degrees=tilt_degrees,
+            ),
         )
         report = controller.run()
 
@@ -578,9 +586,11 @@ def main():
         # Tail of the stage log: where tracking broke down, at a glance.
         for stage in report.get("stages", [])[-3:]:
             err = stage.get("position_error_m")
+            ori = stage.get("orientation_error_rad")
             print(
                 f"    {stage.get('stage')}: status={stage.get('status')} "
-                f"pos_err={err if err is None else round(err, 4)}",
+                f"pos_err={err if err is None else round(err, 4)} "
+                f"ori_err={ori if ori is None else round(ori, 4)}",
                 flush=True,
             )
         results.append((seed, "passed" if result.get("passed") else "fail"))

@@ -91,6 +91,7 @@ class PrivilegedPickConfig:
     target_label: str = "target"
     env_idx: int = 0
     approach_axis_index: int = 0
+    orientation_tilt_degrees: tuple = ()
     pregrasp_clearance_m: float = 0.10
     grasp_height_fraction: float = 0.55
     pose_action_repeats: int = 16
@@ -127,6 +128,8 @@ class PrivilegedPickConfig:
             raise ValueError("env_idx must be non-negative")
         if self.approach_axis_index not in (0, 1, 2):
             raise ValueError("approach_axis_index must be 0 (x), 1 (y) or 2 (z)")
+        if any(abs(t) > 30.0 for t in self.orientation_tilt_degrees):
+            raise ValueError("orientation_tilt_degrees must stay within +-30deg of the base orientation")
         if not 0.0 <= self.grasp_height_fraction <= 1.0:
             raise ValueError("grasp_height_fraction must be within [0, 1]")
         if self.pregrasp_clearance_m <= 0:
@@ -300,6 +303,29 @@ class PrivilegedPickController:
             "grasp_width_warning": horizontal_min > self.config.expected_max_grasp_width_m,
         }
 
+    def _grasp_orientation_bases(self, quaternion: np.ndarray) -> list[tuple[str, np.ndarray]]:
+        """Orientation bases to try: the given quaternion, then tilted variants.
+
+        Each tilt rotates the base about world X and Y - the tool approach
+        stays near-vertical while giving the wrist orientations it can reach
+        exactly. Empty orientation_tilt_degrees (x5 default) yields just the
+        base quaternion, preserving the original behavior.
+        """
+        bases = [("base", quaternion)]
+        for tilt_deg in self.config.orientation_tilt_degrees:
+            rad = np.deg2rad(tilt_deg)
+            for axis_idx, axis_name in ((0, "x"), (1, "y")):
+                axis = np.zeros(3)
+                axis[axis_idx] = 1.0
+                tilt_quat = t3d.quaternions.axangle2quat(axis, rad, is_normalized=True)
+                bases.append(
+                    (
+                        f"tilt{axis_name}{tilt_deg:+g}",
+                        normalize_quaternion(t3d.quaternions.qmult(tilt_quat, quaternion)),
+                    )
+                )
+        return bases
+
     def _select_robot(self, target: Mapping[str, Any]) -> dict[str, Any]:
         candidates = []
         for robot in self.robot_manager.robot_list:
@@ -332,31 +358,42 @@ class PrivilegedPickController:
                 continue
 
             gripper_bias = float(getattr(robot, "gripper_bias", 0.0))
-            grasp_link_position = np.asarray(target["grasp_point"]) - approach * gripper_bias
-            pregrasp_link_position = grasp_link_position - approach * self.config.pregrasp_clearance_m
-            # The canonical tilted quaternion has no wrist solution for some
-            # workspace corners; a yaw rotation about world Z keeps the
-            # approach near-vertical while unlocking other wrists. Canonical
-            # orientation first, yaw variants as fallback.
+            # Orientation candidates: the canonical quaternion first, then
+            # small tilts (config) for wrists that cannot reach exact vertical
+            # (e.g. piper joint5 +-70deg vs the ~90deg a top-down grasp needs)
+            # - the same trick the x5's "little_left/right" quaternions use.
+            # Each base is yaw-rotated about world Z (wrist roll freedom).
+            # Tilting changes the approach axis, so grasp/pregrasp positions
+            # are recomputed per candidate.
             ik_result = {"status": "Fail"}
             yaw_variant = None
-            for yaw_deg in (0.0, 45.0, -45.0, 90.0, -90.0, 135.0, -135.0, 180.0):
-                if yaw_deg == 0.0:
-                    quaternion_try = quaternion
-                else:
-                    yaw_mat = t3d.euler.euler2mat(np.deg2rad(yaw_deg), 0.0, 0.0, "sxyz")
-                    quaternion_try = normalize_quaternion(
-                        t3d.quaternions.mat2quat(yaw_mat @ t3d.quaternions.quat2mat(quaternion))
+            variant_label = "base"
+            for base_label, base_quat in self._grasp_orientation_bases(quaternion):
+                base_mat = t3d.quaternions.quat2mat(base_quat)
+                base_approach = base_mat[:, self.config.approach_axis_index]
+                grasp_link_position = np.asarray(target["grasp_point"]) - base_approach * gripper_bias
+                pregrasp_link_position = grasp_link_position - base_approach * self.config.pregrasp_clearance_m
+                for yaw_deg in (0.0, 45.0, -45.0, 90.0, -90.0, 135.0, -135.0, 180.0):
+                    if yaw_deg == 0.0:
+                        quaternion_try = base_quat
+                    else:
+                        yaw_mat = t3d.euler.euler2mat(np.deg2rad(yaw_deg), 0.0, 0.0, "sxyz")
+                        quaternion_try = normalize_quaternion(
+                            t3d.quaternions.mat2quat(yaw_mat @ base_mat)
+                        )
+                    pregrasp_pose = np.concatenate([pregrasp_link_position, quaternion_try])
+                    ik_result = self.robot_manager.solve_ik(
+                        target_pose=pregrasp_pose.tolist(),
+                        env_idx=self.env_idx,
+                        robot=robot,
                     )
-                pregrasp_pose = np.concatenate([pregrasp_link_position, quaternion_try])
-                ik_result = self.robot_manager.solve_ik(
-                    target_pose=pregrasp_pose.tolist(),
-                    env_idx=self.env_idx,
-                    robot=robot,
-                )
+                    if ik_result.get("status") == "Success":
+                        quaternion = quaternion_try
+                        approach = base_approach
+                        yaw_variant = yaw_deg
+                        variant_label = base_label
+                        break
                 if ik_result.get("status") == "Success":
-                    quaternion = quaternion_try
-                    yaw_variant = yaw_deg
                     break
             end_pose = self.robot_manager.get_real_endpose(
                 robot,
@@ -368,6 +405,7 @@ class PrivilegedPickController:
                 {
                     "arm_name": robot.arm_name,
                     "direction": direction_name,
+                    "orientation_variant": variant_label,
                     "yaw_variant_deg": yaw_variant,
                     "approach_axis": approach,
                     "gripper_bias_m": gripper_bias,
