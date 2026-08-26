@@ -402,7 +402,7 @@ def main():
                 )
                 bad_envs = sorted(bad)
             else:
-                env.seed_manager.eval_step()
+                raise
 
         if bad_envs is not None:
             # Abandon broken-env seeds, refill from the seed queue, and

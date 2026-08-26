@@ -6,6 +6,17 @@ import pickle
 import yaml
 
 
+_GIT_LFS_POINTER_PREFIX = b"version https://git-lfs.github.com/spec/v1"
+
+
+def is_git_lfs_pointer(file_path):
+    path = Path(file_path)
+    if not path.is_file():
+        return False
+    with path.open("rb") as source:
+        return source.read(len(_GIT_LFS_POINTER_PREFIX)) == _GIT_LFS_POINTER_PREFIX
+
+
 def load_yaml(file_path):
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"File {file_path} does not exist.")
@@ -59,6 +70,18 @@ def load_object_metadata(modeldir, index):
             return None
 
     return output
+
+
+def require_object_metadata(modeldir, index):
+    metadata_path = Path(modeldir) / f"{index:05d}" / "metadata.json"
+    if not metadata_path.is_file():
+        raise FileNotFoundError(f"Object metadata is missing: {metadata_path}")
+    if is_git_lfs_pointer(metadata_path):
+        raise ValueError(f"Object metadata is an unresolved Git LFS pointer: {metadata_path}")
+    metadata = load_object_metadata(modeldir, index)
+    if metadata is None:
+        raise ValueError(f"Object metadata is invalid: {metadata_path}")
+    return metadata
 
 
 def load_desc_info(modeldir, index, key="Rigid"):

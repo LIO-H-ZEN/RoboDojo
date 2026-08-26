@@ -10,6 +10,7 @@ layout_overrides:
   Geometry:
     camera_stand:
       default_pos: [-0.55, -0.47, 0.715]
+validate_layout_assets: true
 
 config:
   sim: sim_config_piper_policy

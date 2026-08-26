@@ -80,12 +80,51 @@ class SeedManager:
             )
         else:
             self.seed_list = all_layout_ids
+        if bool(self.config.get("validate_layout_assets", False)):
+            validation_count = min(int(self.config.get("eval_num", len(self.seed_list))), len(self.seed_list))
+            self._validate_layout_assets(self.seed_list[:validation_count])
         self.st_idx = 0
         self.ed_idx = len(self.seed_list)
 
         self.type = "eval"
         self.idx = 0
         self._current_batch_seeds = None
+
+    def _validate_layout_assets(self, layout_ids: Sequence[int]) -> None:
+        checked_instances = 0
+        for layout_id in layout_ids:
+            layout = self.get_seed_scene_info(layout_id)
+            for object_type in ("Rigid", "Dynamic", "Geometry", "Articulation", "Garment", "Fluid"):
+                for category, instances in layout.get(object_type, {}).items():
+                    for instance in instances:
+                        category_idx = int(instance["category_idx"])
+                        asset_type = "Clutter" if instance.get("type") == "cluttered" else object_type
+                        model_dir = Path(
+                            ASSETS_PATH,
+                            "Object",
+                            BENCHMARK,
+                            asset_type,
+                            category,
+                        )
+                        require_object_metadata(model_dir, category_idx)
+                        asset_dir = model_dir / f"{category_idx:05d}"
+                        usd_path = asset_dir / "object.usdz"
+                        if not usd_path.is_file():
+                            usd_path = asset_dir / "object.usd"
+                        if not usd_path.is_file():
+                            raise FileNotFoundError(
+                                f"Object USD is missing for layout_id={layout_id}: {asset_dir}"
+                            )
+                        if is_git_lfs_pointer(usd_path):
+                            raise ValueError(
+                                f"Object USD is an unresolved Git LFS pointer for "
+                                f"layout_id={layout_id}: {usd_path}"
+                            )
+                        checked_instances += 1
+        print(
+            f"[SeedManager] validated layout assets: "
+            f"layouts={list(layout_ids)} instances={checked_instances}"
+        )
 
     def get_seeds(self, max_count: int | None = None) -> List[int] | None:
         """Return a list of seeds for the next `reset()` call.
