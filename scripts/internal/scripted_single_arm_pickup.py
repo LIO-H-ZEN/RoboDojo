@@ -323,6 +323,38 @@ class EpisodeRecorder:
         self.writers = {}
 
 
+def set_finger_friction(env, static_friction=2.0, dynamic_friction=2.0):
+    """High-friction material on the gripper finger collision prims.
+
+    The ManiSkill piper agent assigns static/dynamic friction 2.0 to link7/
+    link8 - with the ~10N grip that yields ~20N of holding friction. The
+    bare URDF-imported piper.usd uses Isaac's default (~0.5-0.7), so smooth
+    objects slip out of the gripper the moment the arm lifts ("gripped but
+    the object never rises"). Patch the CollisionAPI attributes at runtime
+    so no USD regeneration is needed.
+    """
+    from pxr import Usd, UsdPhysics
+
+    stage = Usd.Stage.GetOpenStage()
+    if stage is None:
+        print("[friction] no open USD stage - skipping")
+        return
+    patched = 0
+    for prim in stage.Traverse():
+        path = str(prim.GetPath())
+        if "/link7" not in path and "/link8" not in path:
+            continue
+        if not prim.HasAPI(UsdPhysics.CollisionAPI):
+            continue
+        collision = UsdPhysics.CollisionAPI(prim)
+        collision.CreateStaticFrictionAttr(static_friction)
+        collision.CreateDynamicFrictionAttr(dynamic_friction)
+        collision.CreateRestitutionAttr(0.0)
+        patched += 1
+    print(f"[friction] patched {patched} finger collision prims "
+          f"(static={static_friction}, dynamic={dynamic_friction})", flush=True)
+
+
 def install_eval_env_shims(env, recorder):
     """Give the bare TaskEnv the EvalEnv surface PrivilegedPickController uses.
 
@@ -490,6 +522,9 @@ def main():
     env_cfg = build_env_cfg()
     _, task_class = task_registry.load_task_class(args_cli.task_name)
     env = task_class(env_cfg, simulation_app)
+    # Needs the robot prims on stage, but physics not yet locked in: patch
+    # right after env construction, before the first reset runs far.
+    set_finger_friction(env)
 
     layouts, num_excluded = filter_workspace(strip_clutter(patch_camera_stand(load_layouts())))
     recorder = EpisodeRecorder(env, simulation_app)
