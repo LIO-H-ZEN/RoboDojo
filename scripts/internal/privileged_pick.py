@@ -377,7 +377,12 @@ class PrivilegedPickController:
                     if yaw_deg == 0.0:
                         quaternion_try = base_quat
                     else:
-                        yaw_mat = t3d.euler.euler2mat(np.deg2rad(yaw_deg), 0.0, 0.0, "sxyz")
+                        # 'sxyz' euler2mat(ai, aj, ak) = Rz(ak) Ry(aj) Rx(ai):
+                        # the yaw angle must be the THIRD argument (z axis).
+                        # As the first argument it is an X-axis rotation that
+                        # tips the tool horizontal - the arm then grasps
+                        # forward and misses by exactly gripper_bias.
+                        yaw_mat = t3d.euler.euler2mat(0.0, 0.0, np.deg2rad(yaw_deg), "sxyz")
                         quaternion_try = normalize_quaternion(
                             t3d.quaternions.mat2quat(yaw_mat @ base_mat)
                         )
