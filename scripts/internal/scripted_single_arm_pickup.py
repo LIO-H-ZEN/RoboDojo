@@ -601,25 +601,46 @@ def _build_contact_views(env, target_info: dict, physics_sim_view) -> dict:
         inst_name = target_info.get("instance_name")
         if inst_name is None:
             return {}
-        # Prim path from layout manager internals
-        target_prim_path = lm._instance_prim_path(0, inst_name)
+        scene_obj = lm.get_scene_object(0, inst_name)
+        target_prim_path = getattr(scene_obj, "_prim_path", None)
         if target_prim_path is None:
+            print(f"[contact] no prim path on scene object {inst_name}", flush=True)
             return {}
+
+        # Resolve the finger rigid-body prims by traversing the robot
+        # articulation on stage (paths differ across asset builds; do not
+        # hardcode).
+        from isaacsim.core.utils.stage import get_current_stage
+
+        stage = get_current_stage()
+        if stage is None:
+            print("[contact] no open USD stage", flush=True)
+            return {}
+        finger_paths = {name: None for name in ("link7", "link8")}
+        for prim in stage.Traverse():
+            path = str(prim.GetPath())
+            if "/robot" not in path:
+                continue
+            for link_name in finger_paths:
+                if path.endswith(f"/{link_name}"):
+                    finger_paths[link_name] = path
+
         views = {}
-        robot = next(r for r in env.robot_manager.robot_list if r.type == "target")
-        robot_key = env.robot_manager.robot_key[env.robot_manager.robot_list.index(robot)]
-        env_root = f"/World/envs/env_0/robot0/root_joint"
-        for link_name in ("link7", "link8"):
+        for link_name, body_path in finger_paths.items():
+            if body_path is None:
+                print(f"[contact] no stage prim for {link_name}", flush=True)
+                continue
             try:
-                body_glob = f"{env_root}/{link_name}"
                 view = physics_sim_view.create_rigid_contact_view(
-                    body_glob,
+                    body_path,
                     filter_patterns=[target_prim_path],
                     max_contact_data_count=8,
                 )
                 views[link_name] = view
             except Exception as exc:
                 print(f"[contact] could not create contact view for {link_name}: {exc}", flush=True)
+        if views:
+            print(f"[contact] views: fingers={sorted(views)} target={target_prim_path}", flush=True)
         return views
     except Exception as exc:
         print(f"[contact] contact view setup failed: {exc}", flush=True)
@@ -634,6 +655,12 @@ def install_eval_env_shims(env, recorder, trace_writer=None):
     trace_writer, if provided, samples full per-step state into a JSONL trace.
     """
     env.gripper_telemetry_actions = []
+
+    def set_trace_stage(name):
+        if trace_writer is not None:
+            trace_writer.set_stage(name)
+
+    env.set_trace_stage = set_trace_stage
 
     def _gripper_telemetry_snapshot(robot):
         if robot.robot_name != "piper":

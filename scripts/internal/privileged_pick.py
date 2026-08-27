@@ -586,6 +586,9 @@ class PrivilegedPickController:
         gripper: float,
     ) -> None:
         pose = np.concatenate([np.asarray(position, dtype=float), quaternion])
+        trace_stage = getattr(self.env, "set_trace_stage", None)
+        if trace_stage is not None:
+            trace_stage(stage)
         final_position_error = float("inf")
         final_orientation_error = float("inf")
         for attempt in range(1, self.config.pose_action_repeats + 1):
@@ -640,6 +643,9 @@ class PrivilegedPickController:
         )
 
     def _execute_joint_hold(self, stage: str, robot: Any, *, gripper: float) -> None:
+        trace_stage = getattr(self.env, "set_trace_stage", None)
+        if trace_stage is not None:
+            trace_stage(stage)
         joint_value = self.robot_manager.get_joint(robot, env_idx_list=[self.env_idx])[self.env_idx]
         target_z_before = self._target_z()
         self.env.take_action(self._build_joint_action(robot, joint_value, gripper))
