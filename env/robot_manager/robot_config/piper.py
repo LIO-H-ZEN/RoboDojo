@@ -49,15 +49,18 @@ def get_robot_config():
             ),
             "gripper": ImplicitActuatorCfg(
                 joint_names_expr=["joint7", "joint8"],
-                # Cap grip force at the real gripper's ~10N payload rating,
-                # but reach it firmly: the Gazebo p=100 targets the real
-                # motor controller (integral action maintains force); as a
-                # pure sim PD it grips a 3cm object with only ~1.5N and the
-                # object slips out the moment the arm lifts. k=1000
-                # saturates at the 10N effort limit on contact.
+                # Match the ManiSkill piper agent exactly: force_limit 10 (real
+                # gripper's ~10N payload / MuJoCo forcerange), stiffness 100,
+                # damping 10 (Gazebo joint7 p=100 d=10). An earlier k=1000 hack
+                # tried to force a firmer grip, but with the finger friction now
+                # at mu=2.0 (as ManiSkill sets on link7/link8) it is
+                # unnecessary and harmful: high joint stiffness over-penetrates
+                # on contact and shoves the object out of the jaw, so the grasp
+                # looks closed yet the object never rises. mu=2.0 supplies the
+                # holding force at the lower, PhysX-stable stiffness.
                 effort_limit_sim=10.0,
-                stiffness=1000.0,
-                damping=100.0,
+                stiffness=100.0,
+                damping=10.0,
             ),
         },
     )
