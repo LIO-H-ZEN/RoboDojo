@@ -602,12 +602,22 @@ def main():
                 approach_axis_index=approach_axis,
                 opening_axis_index=opening_axis,
                 orientation_tilt_degrees=tilt_degrees,
-                # Grasp deeper into the object: with the TCP at 55% height the
-                # fingers only straddle the object's top sliver when closing
-                # starts; 0.35 puts the grasp point near the lower third so
-                # the jaws engulf the object body.
-                grasp_height_fraction=0.35,
-                close_action_repeats=6,
+                # Grasp deep and low: a shallow grasp catches only the top
+                # sliver of the object, so the fingers form a weak fingertip
+                # pinch that slips the moment the arm lifts ("gripped but the
+                # object never rises"). 0.22 puts the fingertips near the base
+                # so the jaws engulf the lower body and seat the object deep
+                # in the notch.
+                grasp_height_fraction=0.22,
+                # Let the grip fully build before lifting: the PD gripper needs
+                # several control cycles to ramp to its ~10N clamp and for
+                # PhysX to settle finger-object contact. Lifting before the
+                # normal force is established slips the object.
+                close_action_repeats=8,
+                prelift_hold_actions=4,
+                # Lift gently: more waypoints = smaller per-step motion, so the
+                # object is not yanked out of a marginal grip.
+                lift_waypoints=6,
                 # The piper's +-70deg wrist cannot hold a vertical tool at
                 # the top of a purely vertical lift (arm folds tight): lift
                 # up-and-outward like a human does.
@@ -643,6 +653,29 @@ def main():
                 f"ori_err={ori if ori is None else round(ori, 4)}",
                 flush=True,
             )
+        # Object-height trace across close/lift: does the object rise WITH the
+        # hand (grip holds) or stay put (no grip / slip)? This is the single
+        # most useful signal for diagnosing "gripped but never rises".
+        init_z = report.get("target", {}).get("position", [0, 0, 0])
+        init_z = init_z[2] if isinstance(init_z, (list, tuple)) and len(init_z) == 3 else None
+        trace = []
+        last_by_stage = {}
+        order = []
+        for stage in report.get("stages", []):
+            name = stage.get("stage", "")
+            if not (name.startswith("close") or name.startswith("prelift") or name.startswith("lift")):
+                continue
+            z_after = stage.get("target_z_after")
+            if z_after is None:
+                continue
+            if name not in last_by_stage:
+                order.append(name)
+            last_by_stage[name] = z_after
+        for name in order:
+            rel = last_by_stage[name] - init_z if init_z is not None else last_by_stage[name]
+            trace.append(f"{name}={rel:+.3f}")
+        if trace:
+            print(f"    obj_z (vs start): {' '.join(trace)}", flush=True)
         results.append((seed, "passed" if result.get("passed") else "fail"))
 
     print("\n===== summary =====")
