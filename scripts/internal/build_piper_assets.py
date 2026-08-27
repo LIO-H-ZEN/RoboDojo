@@ -331,10 +331,13 @@ def _audit_referenced_layers(usd_path, stage):
         print(f"[piper] audit: {link}/collisions composed children={child_count}")
     for link in ("link7", "link8"):
         collider = stage.GetPrimAtPath(f"/colliders/{link}")
+        if not collider.IsValid():
+            print(f"[piper] audit: /colliders/{link}: NOT composed in piper.usd stage")
+            continue
         print(
-            f"[piper] audit: /colliders/{link}: valid={collider.IsValid()} "
+            f"[piper] audit: /colliders/{link}: valid=True "
             f"type={collider.GetTypeName()} collisionAPI={collider.HasAPI(UsdPhysics.CollisionAPI)} "
-            f"children={len(collider.GetChildren()) if collider.IsValid() else 0}"
+            f"children={len(collider.GetChildren())}"
         )
 
     # 2) Open every configuration/*.usd sibling layer and census collisions.
