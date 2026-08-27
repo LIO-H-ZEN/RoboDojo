@@ -101,6 +101,10 @@ class PrivilegedPickConfig:
     descend_waypoints: int = 4
     lift_distance_m: float = 0.13
     lift_waypoints: int = 4
+    # Tilt the lift path outward (away from the arm base), like a human
+    # lifting up-and-out: a purely vertical lift folds the arm tight at the
+    # top and can exceed wrist limits (piper joint5 +-70deg).
+    lift_outward_tilt_deg: float = 0.0
     close_action_repeats: int = 3
     prelift_hold_actions: int = 2
     post_lift_hold_sim_steps: int = 50
@@ -147,6 +151,8 @@ class PrivilegedPickConfig:
             raise ValueError("lift_distance_m must be greater than minimum_lift_m")
         if self.descend_waypoints < 1 or self.lift_waypoints < 2:
             raise ValueError("descend_waypoints must be >= 1 and lift_waypoints must be >= 2")
+        if not 0.0 <= self.lift_outward_tilt_deg <= 45.0:
+            raise ValueError("lift_outward_tilt_deg must be within [0, 45]")
         if self.close_action_repeats < 1 or self.prelift_hold_actions < 0:
             raise ValueError("close_action_repeats must be >= 1 and prelift_hold_actions must be >= 0")
         if self.post_lift_hold_sim_steps < 1:
@@ -227,11 +233,36 @@ class PrivilegedPickController:
                 self._execute_joint_hold(f"prelift_hold_{index}", robot, gripper=0.0)
                 self._ensure_episode_running(f"prelift_hold_{index}")
 
-            lift_end = grasp_link_position + np.array([0.0, 0.0, self.config.lift_distance_m])
+            # Lift direction: vertical by default; optionally tilted outward
+            # (away from the arm base) so the arm extends instead of folding
+            # tight at the top of the lift.
+            lift_dir = np.array([0.0, 0.0, 1.0])
+            if self.config.lift_outward_tilt_deg > 0.0:
+                base_xy = np.asarray(robot.entity_origin_pose[:2], dtype=float)
+                outward = np.asarray(grasp_link_position[:2], dtype=float) - base_xy
+                norm = float(np.linalg.norm(outward))
+                if norm > 1e-6:
+                    outward = outward / norm
+                    tilt = np.deg2rad(self.config.lift_outward_tilt_deg)
+                    lift_dir = np.array(
+                        [np.sin(tilt) * outward[0], np.sin(tilt) * outward[1], np.cos(tilt)]
+                    )
+            lift_end = grasp_link_position + lift_dir * self.config.lift_distance_m
             lift_positions = linear_waypoints(grasp_link_position, lift_end, self.config.lift_waypoints)
             for index, position in enumerate(lift_positions, start=1):
                 stage = f"lift_{index}"
-                self._execute_pose(stage, robot, position, quaternion, gripper=0.0)
+                try:
+                    self._execute_pose(stage, robot, position, quaternion, gripper=0.0)
+                except RuntimeError as exc:
+                    # The top of the lift can exceed wrist limits with the
+                    # object already grasped and rising: cap the lift here
+                    # and let the hold evaluation judge the achieved height
+                    # instead of failing the episode outright.
+                    if "IK failed" in str(exc):
+                        self._record_stage(stage, status="lift_capped", message=str(exc))
+                        print(f"[PrivilegedPick] {stage} unreachable - capping lift", flush=True)
+                        break
+                    raise
                 if self.env.end_flag[self.env_idx]:
                     if not self.env.success[self.env_idx]:
                         raise RuntimeError(f"Episode failed during {stage}")

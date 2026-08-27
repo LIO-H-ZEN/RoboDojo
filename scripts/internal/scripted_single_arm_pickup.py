@@ -608,6 +608,10 @@ def main():
                 # the jaws engulf the object body.
                 grasp_height_fraction=0.35,
                 close_action_repeats=6,
+                # The piper's +-70deg wrist cannot hold a vertical tool at
+                # the top of a purely vertical lift (arm folds tight): lift
+                # up-and-outward like a human does.
+                lift_outward_tilt_deg=25.0,
             ),
         )
         report = controller.run()
