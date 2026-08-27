@@ -254,23 +254,30 @@ def postprocess_usd(usd_path):
         if not prim.HasAPI(PhysxSchema.PhysxContactReportAPI):
             PhysxSchema.PhysxContactReportAPI.Apply(prim)
         patched += 1
-        # Report collision-material bindings under this finger link.
-        for child in prim.GetChildren():
+        # Report collision-material bindings anywhere in this finger subtree
+        # (importer nests collision prims under link7/collision/...).
+        for child in stage.Traverse():
+            child_path = str(child.GetPath())
+            if not child_path.startswith(path + "/"):
+                continue
             if not child.HasAPI(UsdPhysics.CollisionAPI):
                 continue
             rel = child.GetRelationship("material:binding:physics")
             targets = list(rel.GetForwardedTargets()) if rel is not None else []
             if not targets:
-                material_lines.append(f"{child.GetPath()}: no physics material binding")
+                material_lines.append(f"{child_path}: no physics material binding")
                 continue
             mat = stage.GetPrimAtPath(targets[0])
             static = mat.GetAttribute("physics:staticFriction").Get() if mat else None
             dynamic = mat.GetAttribute("physics:dynamicFriction").Get() if mat else None
             material_lines.append(
-                f"{child.GetPath()}: material={targets[0]} static={static} dynamic={dynamic}"
+                f"{child_path}: material={targets[0]} static={static} dynamic={dynamic}"
             )
     stage.GetRootLayer().Save()
     print(f"[piper] post-process: contact report applied to {patched} finger body prims")
+    if not material_lines:
+        print("[piper] finger material: NO collision prims found under link7/link8 "
+              "- check import config (collision geometry may be missing)")
     for line in material_lines:
         print(f"[piper] finger material: {line}")
 
