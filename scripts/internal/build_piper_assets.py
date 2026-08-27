@@ -324,7 +324,7 @@ def _bake_finger_friction(usd_path, static_friction=2.0, dynamic_friction=2.0):
     """
     import os
 
-    from pxr import Usd, UsdPhysics
+    from pxr import Sdf, Usd, UsdPhysics  # noqa: F401
 
     physics_layer = os.path.join(
         os.path.dirname(os.path.abspath(usd_path)), "configuration", "piper_physics.usd"
@@ -337,10 +337,15 @@ def _bake_finger_friction(usd_path, static_friction=2.0, dynamic_friction=2.0):
         print(f"[piper] friction bake FAILED: could not open {physics_layer}")
         return
     mat_path = "/PhysicsMaterials/piper_finger_grip"
-    material = UsdPhysics.Material.Define(stage, mat_path)
-    material.CreateStaticFrictionAttr(static_friction)
-    material.CreateDynamicFrictionAttr(dynamic_friction)
-    material.CreateRestitutionAttr(0.0)
+    # No UsdPhysics.Material.Define on this USD build: define the material
+    # prim manually - a typed "Material" prim carrying physics: attributes
+    # plus the MaterialAPI schema.
+    material = stage.DefinePrim(mat_path, "Material")
+    material.CreateAttribute("physics:staticFriction", Sdf.ValueTypeNames.Float).Set(static_friction)
+    material.CreateAttribute("physics:dynamicFriction", Sdf.ValueTypeNames.Float).Set(dynamic_friction)
+    material.CreateAttribute("physics:restitution", Sdf.ValueTypeNames.Float).Set(0.0)
+    material.GetPrim().CreateAttribute("info:semantics", Sdf.ValueTypeNames.String).Set("piper_finger_grip") if hasattr(material, "GetPrim") else None
+    material.ApplyAPI("UsdPhysicsMaterialAPI")
     bound = 0
     for prim in stage.Traverse():
         path = str(prim.GetPath())
