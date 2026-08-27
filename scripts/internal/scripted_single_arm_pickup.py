@@ -450,6 +450,10 @@ def install_eval_env_shims(env, recorder):
             env.gripper_telemetry_actions.append(summary)
             env.last_gripper_telemetry = summary
             final = summary["final"]
+            error = final.get("error")
+            if error is not None:
+                print(f"[grip-diag] error={error}", flush=True)
+                continue
             q = final.get("joint_pos")
             target = final.get("joint_pos_target")
             torque = final.get("applied_torque_estimate")

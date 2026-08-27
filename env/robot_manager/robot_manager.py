@@ -215,9 +215,10 @@ class RobotManager:
             value = getattr(key.data, name, None)
             if value is None:
                 return None
-            return np.array(value[env_idx, joint_ids].detach().cpu(), dtype=float)
+            tensor = getattr(value, "torch", value)
+            return np.array(tensor[env_idx, joint_ids].detach().cpu(), dtype=float)
 
-        delivered = self.last_gripper_control[env_idx].get(robot.arm_name)
+        delivered = self.last_gripper_control[env_idx].get(robot.gripper_name)
         return {
             "joint_names": list(robot.gripper_joints_name),
             "joint_pos": read("joint_pos"),
@@ -428,7 +429,7 @@ class RobotManager:
                         device=sim.device,
                         dtype=torch.float32,
                     )
-                    self.last_gripper_control[env_idx][robot.arm_name] = gripper_position[id].detach().cpu().tolist()
+                    self.last_gripper_control[env_idx][robot.gripper_name] = gripper_position[id].detach().cpu().tolist()
 
                 env_ids = torch.tensor(plan_lst, dtype=torch.int32, device=arm_velocity.device)
                 arm.set_joint_position_target(arm_position, joint_ids=robot.arm_joint_indices, env_ids=env_ids)  # arm
