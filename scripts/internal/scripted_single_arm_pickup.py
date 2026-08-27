@@ -333,9 +333,10 @@ def set_finger_friction(env, static_friction=2.0, dynamic_friction=2.0):
     the object never rises"). Patch the CollisionAPI attributes at runtime
     so no USD regeneration is needed.
     """
-    from pxr import Usd, UsdPhysics
+    from isaacsim.core.utils.stage import get_current_stage
+    from pxr import UsdPhysics
 
-    stage = Usd.Stage.GetOpenStage()
+    stage = get_current_stage()
     if stage is None:
         print("[friction] no open USD stage - skipping")
         return
