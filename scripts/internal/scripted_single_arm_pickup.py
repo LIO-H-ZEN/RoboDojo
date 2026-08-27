@@ -325,6 +325,39 @@ class EpisodeRecorder:
         self.writers = {}
 
 
+def set_finger_contact_reporting(env):
+    """Enable PhysX contact-report API on link7/link8 collision prims.
+
+    Without this, create_rigid_contact_view silently returns empty buffers for
+    these bodies because they have no PhysxContactReportAPI schema applied.
+    This call is diagnostic-only: it does not change friction, mass, gain,
+    gravity, or collision geometry.
+    """
+    from isaacsim.core.utils.stage import get_current_stage
+
+    try:
+        from pxr import PhysxSchema
+    except ImportError:
+        print("[contact] PhysxSchema not available - contact force reporting disabled", flush=True)
+        return False
+
+    stage = get_current_stage()
+    if stage is None:
+        print("[contact] no open USD stage - contact reporting disabled", flush=True)
+        return False
+
+    patched = 0
+    for prim in stage.Traverse():
+        path = str(prim.GetPath())
+        if "/link7" not in path and "/link8" not in path:
+            continue
+        if not prim.HasAPI(PhysxSchema.PhysxContactReportAPI):
+            PhysxSchema.PhysxContactReportAPI.Apply(prim)
+            patched += 1
+    print(f"[contact] applied PhysxContactReportAPI to {patched} finger collision prims", flush=True)
+    return patched > 0
+
+
 def set_finger_friction(env, static_friction=2.0, dynamic_friction=2.0):
     """High-friction material on the gripper finger collision prims.
 
@@ -358,11 +391,246 @@ def set_finger_friction(env, static_friction=2.0, dynamic_friction=2.0):
           f"(static={static_friction}, dynamic={dynamic_friction})", flush=True)
 
 
-def install_eval_env_shims(env, recorder):
+PHYSICS_DT = 0.005  # sim_config_piper_policy.yml dt
+
+
+class GraspTraceWriter:
+    """Write per-simulation-step grasp diagnostics to a JSONL file.
+
+    One instance lives for the whole run. Call new_episode() before each
+    episode, step() after each sim_step(), and close_episode() to flush.
+    """
+
+    def __init__(self, out_dir: str, physics_dt: float = PHYSICS_DT):
+        self.out_dir = out_dir
+        self.physics_dt = physics_dt
+        self._episode_path: str | None = None
+        self._fh = None
+        self._sim_step = 0
+        self._stage = "init"
+        self._stage_step = 0
+        self._prev_target_vel = None  # for finite-difference acceleration
+        self._contact_views: dict = {}  # {"link7": view, "link8": view}
+        self._contact_available = False
+
+    def new_episode(self, seed: int, ep: int, contact_views: dict | None = None):
+        self.close_episode()
+        os.makedirs(self.out_dir, exist_ok=True)
+        self._episode_path = os.path.join(self.out_dir, f"trace_ep{ep}_seed{seed}.jsonl")
+        self._fh = open(self._episode_path, "w", encoding="utf-8")  # noqa: WPS515
+        self._sim_step = 0
+        self._stage = "init"
+        self._stage_step = 0
+        self._prev_target_vel = None
+        self._contact_views = contact_views or {}
+        self._contact_available = bool(self._contact_views)
+        self._stage_records: list = []  # in-memory for stage summary
+
+    def set_stage(self, stage: str):
+        if stage != self._stage:
+            self._flush_stage_summary()
+            self._stage = stage
+            self._stage_step = 0
+            self._stage_records = []
+
+    def _flush_stage_summary(self):
+        records = self._stage_records
+        if not records:
+            return
+        stage = self._stage
+        # Extract numeric arrays across stage
+        tau = [r.get("tau_applied") for r in records if r.get("tau_applied") is not None]
+        sep = [r.get("finger_sep_m") for r in records if r.get("finger_sep_m") is not None]
+        residual = [r.get("gripper_residual_m") for r in records if r.get("gripper_residual_m") is not None]
+        dz = [r.get("target_dz_m") for r in records if r.get("target_dz_m") is not None]
+        cf7 = [r.get("contact_force_link7_N") for r in records if r.get("contact_force_link7_N") is not None]
+        cf8 = [r.get("contact_force_link8_N") for r in records if r.get("contact_force_link8_N") is not None]
+
+        tau_peak = np.abs(np.asarray(tau)).max(axis=0).tolist() if tau else None
+        cf7_peak = float(np.max(cf7)) if cf7 else None
+        cf8_peak = float(np.max(cf8)) if cf8 else None
+        both_contact = any(
+            r.get("contact_link7") and r.get("contact_link8") for r in records
+        )
+        dz_final = dz[-1] if dz else None
+        sep_final = sep[-1] if sep else None
+        residual_final = residual[-1] if residual else None
+        print(
+            f"[trace] stage={stage} steps={len(records)} "
+            f"tau_peak={None if tau_peak is None else [round(v, 3) for v in tau_peak]} "
+            f"sep_final={None if sep_final is None else round(sep_final, 4)}m "
+            f"residual_final={None if residual_final is None else round(residual_final, 4)}m "
+            f"cf7_peak={None if cf7_peak is None else round(cf7_peak, 2)}N "
+            f"cf8_peak={None if cf8_peak is None else round(cf8_peak, 2)}N "
+            f"both_contact={both_contact} "
+            f"target_dz_final={None if dz_final is None else round(dz_final, 4)}m",
+            flush=True,
+        )
+        self._stage_records = []
+
+    def step(self, env, robot, target_info: dict):
+        """Sample one sim step and append to the trace file."""
+        if self._fh is None:
+            return
+        self._sim_step += 1
+        self._stage_step += 1
+        record: dict = {
+            "sim_step": self._sim_step,
+            "stage": self._stage,
+            "stage_step": self._stage_step,
+        }
+        rm = env.robot_manager
+
+        # Gripper joint state
+        try:
+            telem = rm.get_gripper_telemetry(robot, env_idx=0)
+            q = telem.get("joint_pos")
+            qt = telem.get("joint_pos_target")
+            tau = telem.get("applied_torque_estimate")
+            record["gripper_q"] = None if q is None else q.tolist()
+            record["gripper_target"] = None if qt is None else qt.tolist()
+            record["tau_applied"] = None if tau is None else tau.tolist()
+            if q is not None:
+                residual = float(q[0])
+                record["gripper_residual_m"] = residual
+            if q is not None and qt is not None:
+                record["gripper_q_error"] = (qt - q).tolist()
+        except Exception as exc:
+            record["gripper_telem_error"] = str(exc)
+
+        # Finger geometry
+        try:
+            f7 = rm.get_link_pose(robot, "link7", env_idx_list=[0], is_relative=True)[0]
+            f8 = rm.get_link_pose(robot, "link8", env_idx_list=[0], is_relative=True)[0]
+            p7 = np.asarray(f7, dtype=float)[:3]
+            p8 = np.asarray(f8, dtype=float)[:3]
+            record["link7_pos"] = p7.tolist()
+            record["link8_pos"] = p8.tolist()
+            sep = float(np.linalg.norm(p7 - p8))
+            record["finger_sep_m"] = sep
+        except Exception as exc:
+            record["finger_pose_error"] = str(exc)
+
+        # Target object state
+        try:
+            obj = _get_target_object(env, target_info)
+            if obj is not None:
+                pos, _ = obj.get_local_pose()
+                vel = obj.get_linear_velocity()
+                avel = obj.get_angular_velocity()
+                pos_arr = np.asarray(pos, dtype=float)
+                vel_arr = np.asarray(vel, dtype=float)
+                avel_arr = np.asarray(avel, dtype=float)
+                record["target_pos"] = pos_arr.tolist()
+                record["target_vel"] = vel_arr.tolist()
+                record["target_angular_vel"] = avel_arr.tolist()
+                init_z = float(target_info.get("initial_z", pos_arr[2]))
+                record["target_dz_m"] = float(pos_arr[2] - init_z)
+                if self._prev_target_vel is not None:
+                    acc = (vel_arr - self._prev_target_vel) / self.physics_dt
+                    record["target_acc_estimate"] = acc.tolist()
+                self._prev_target_vel = vel_arr.copy()
+        except Exception as exc:
+            record["target_state_error"] = str(exc)
+
+        # Contact forces
+        if self._contact_available:
+            for link_name, view in self._contact_views.items():
+                try:
+                    force_matrix = view.get_contact_force_matrix(dt=self.physics_dt)
+                    # shape: (num_sensor_bodies, num_filter_shapes, 3)
+                    # sum across filter shapes to get total contact force
+                    if force_matrix is not None:
+                        fm = np.asarray(force_matrix, dtype=float)
+                        # fm may be (N, 3) or (1, N, 3) depending on API version
+                        if fm.ndim == 3:
+                            fm = fm[0]  # take first env if batched
+                        total = fm.sum(axis=0)  # sum across filter shapes
+                        norm = float(np.linalg.norm(total))
+                        record[f"contact_force_{link_name}"] = total.tolist()
+                        record[f"contact_force_{link_name}_N"] = norm
+                        record[f"contact_{link_name}"] = norm > 0.1
+                    else:
+                        record[f"contact_force_{link_name}"] = None
+                        record[f"contact_force_{link_name}_N"] = None
+                        record[f"contact_{link_name}"] = None
+                except Exception as exc:
+                    record[f"contact_{link_name}_error"] = str(exc)
+        else:
+            record["contact_available"] = False
+
+        self._stage_records.append({k: record[k] for k in (
+            "tau_applied", "finger_sep_m", "gripper_residual_m", "target_dz_m",
+            "contact_force_link7_N", "contact_force_link8_N",
+            "contact_link7", "contact_link8",
+        ) if k in record})
+
+        import json as _json
+        self._fh.write(_json.dumps(record) + "\n")
+
+    def close_episode(self):
+        self._flush_stage_summary()
+        if self._fh is not None:
+            self._fh.close()
+            self._fh = None
+            if self._episode_path:
+                print(f"[trace] written {self._episode_path}", flush=True)
+
+
+def _get_target_object(env, target_info: dict):
+    """Retrieve the live RigidObject for the current target from the layout."""
+    try:
+        lm = env.scene_manager.layout_manager
+        inst_name = target_info.get("instance_name")
+        if inst_name is None:
+            return None
+        return lm.get_scene_object(0, inst_name)
+    except Exception:
+        return None
+
+
+def _build_contact_views(env, target_info: dict, physics_sim_view) -> dict:
+    """Create per-finger rigid contact views filtered to the target prim.
+
+    Returns an empty dict if the target prim path cannot be resolved or
+    create_rigid_contact_view fails.
+    """
+    try:
+        lm = env.scene_manager.layout_manager
+        inst_name = target_info.get("instance_name")
+        if inst_name is None:
+            return {}
+        # Prim path from layout manager internals
+        target_prim_path = lm._instance_prim_path(0, inst_name)
+        if target_prim_path is None:
+            return {}
+        views = {}
+        robot = next(r for r in env.robot_manager.robot_list if r.type == "target")
+        robot_key = env.robot_manager.robot_key[env.robot_manager.robot_list.index(robot)]
+        env_root = f"/World/envs/env_0/robot0/root_joint"
+        for link_name in ("link7", "link8"):
+            try:
+                body_glob = f"{env_root}/{link_name}"
+                view = physics_sim_view.create_rigid_contact_view(
+                    body_glob,
+                    filter_patterns=[target_prim_path],
+                    max_contact_data_count=8,
+                )
+                views[link_name] = view
+            except Exception as exc:
+                print(f"[contact] could not create contact view for {link_name}: {exc}", flush=True)
+        return views
+    except Exception as exc:
+        print(f"[contact] contact view setup failed: {exc}", flush=True)
+        return {}
+
+
+def install_eval_env_shims(env, recorder, trace_writer=None):
     """Give the bare TaskEnv the EvalEnv surface PrivilegedPickController uses.
 
     take_action / is_episode_end are adapted from src/eval_client/eval_env.py
     (single-arm joint-action path); get_obs_batch routes to the recorder.
+    trace_writer, if provided, samples full per-step state into a JSONL trace.
     """
     env.gripper_telemetry_actions = []
 
@@ -432,7 +700,9 @@ def install_eval_env_shims(env, recorder):
         cm = rm.control_manager
         cm.push([0], [seq])
         step_cnt = 0
-        telemetry_samples = {robot: [] for robot in targets if robot.robot_name == "piper"}
+        piper_robots = [r for r in targets if r.robot_name == "piper"]
+        telemetry_samples = {robot: [] for robot in piper_robots}
+        target_info = getattr(env, "_trace_target_info", {})
         while not cm.get_empty([0]):
             env.step(cm.pop(env_idx_list=[0]))
             env.sim_step(render=False)
@@ -441,6 +711,9 @@ def install_eval_env_shims(env, recorder):
                 sample = _gripper_telemetry_snapshot(robot)
                 if sample is not None:
                     samples.append(sample)
+            if trace_writer is not None:
+                for robot in piper_robots:
+                    trace_writer.step(env, robot, target_info)
             if step_cnt % GRAB_EVERY == 0:
                 recorder.grab()
         for robot, samples in telemetry_samples.items():
@@ -588,16 +861,18 @@ def main():
     # Needs the robot prims on stage, but physics not yet locked in: patch
     # right after env construction, before the first reset runs far.
     set_finger_friction(env)
+    contact_reporting_enabled = set_finger_contact_reporting(env)
 
     layouts, num_excluded = filter_workspace(strip_clutter(patch_camera_stand(load_layouts())))
     recorder = EpisodeRecorder(env, simulation_app)
-    install_eval_env_shims(env, recorder)
+    is_piper = any(r.robot_name == "piper" for r in env.robot_manager.robot_list)
+    trace_writer = GraspTraceWriter(out_dir=args_cli.video_dir) if is_piper else None
+    install_eval_env_shims(env, recorder, trace_writer=trace_writer)
 
     print(f"[scripted] task={args_cli.task_name} env_cfg={args_cli.env_cfg} episodes={args_cli.episodes}")
 
     # The x5's gripper extends along ee +X, the piper's along ee +Z; the
     # grasp quaternion table and approach-axis column differ accordingly.
-    is_piper = any(r.robot_name == "piper" for r in env.robot_manager.robot_list)
     approach_axis = 2 if is_piper else 0
     # Piper fingers separate along link6 +-Y (measured); used to keep the jaw
     # opening across the object's SHORT axis when picking a grasp yaw.
@@ -633,6 +908,29 @@ def main():
         env.reward_manager.reset()
         env.reward_manager.init_state()
         env.run_reward()
+
+        # Resolve target info for trace writer and contact views.
+        env._trace_target_info = {}
+        if trace_writer is not None:
+            try:
+                lm = env.scene_manager.layout_manager
+                inst_name = lm.get_instance_name(0, label="target")
+                if inst_name is not None:
+                    pos, _ = lm.get_instance_pose(0, inst_name=inst_name, relative=True)
+                    init_z = float(np.asarray(pos, dtype=float)[2]) if pos is not None else 0.0
+                    env._trace_target_info = {"instance_name": inst_name, "initial_z": init_z}
+                # Build per-finger contact views filtered to the target prim.
+                try:
+                    from omni.physics.tensors.impl.api import SimulationView as _SimView
+                    psv = _SimView()
+                    contact_views = _build_contact_views(env, env._trace_target_info, psv)
+                except Exception as exc:
+                    print(f"[contact] physics sim view unavailable: {exc}", flush=True)
+                    contact_views = {}
+                trace_writer.new_episode(seed=seed, ep=ep, contact_views=contact_views)
+            except Exception as exc:
+                print(f"[trace] episode init failed: {exc}", flush=True)
+                trace_writer.new_episode(seed=seed, ep=ep, contact_views={})
 
         if ep == 0:
             # Kinematic self-check (needs robot_key, only built after the
@@ -687,6 +985,8 @@ def main():
             ),
         )
         report = controller.run()
+        if trace_writer is not None:
+            trace_writer.close_episode()
 
         result = report["result"]
         target = report.get("target", {}).get("instance_name", "?")
