@@ -303,8 +303,6 @@ def _audit_referenced_layers(usd_path, stage):
     """
     import os
 
-    from pxr import Sdf
-
     # 1) What does link7/collisions actually reference?
     for link in ("link7", "link8"):
         prim = stage.GetObjectAtPath(f"/piper/root_joint/{link}/collisions")
