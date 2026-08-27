@@ -337,15 +337,14 @@ def _bake_finger_friction(usd_path, static_friction=2.0, dynamic_friction=2.0):
         print(f"[piper] friction bake FAILED: could not open {physics_layer}")
         return
     mat_path = "/PhysicsMaterials/piper_finger_grip"
-    # No UsdPhysics.Material.Define on this USD build: define the material
-    # prim manually - a typed "Material" prim carrying physics: attributes
-    # plus the MaterialAPI schema.
-    material = stage.DefinePrim(mat_path, "Material")
+    # This USD build has no UsdPhysics.Material/UsdPhysicsMaterialAPI. Use the
+    # same construction as isaacsim's PhysicsMaterial (what RoboDojo's rigid
+    # objects use): a prim typed "PhysicsMaterial" with physics: attributes,
+    # bound via material:binding:physics.
+    material = stage.DefinePrim(mat_path, "PhysicsMaterial")
     material.CreateAttribute("physics:staticFriction", Sdf.ValueTypeNames.Float).Set(static_friction)
     material.CreateAttribute("physics:dynamicFriction", Sdf.ValueTypeNames.Float).Set(dynamic_friction)
     material.CreateAttribute("physics:restitution", Sdf.ValueTypeNames.Float).Set(0.0)
-    material.GetPrim().CreateAttribute("info:semantics", Sdf.ValueTypeNames.String).Set("piper_finger_grip") if hasattr(material, "GetPrim") else None
-    material.ApplyAPI("UsdPhysicsMaterialAPI")
     bound = 0
     for prim in stage.Traverse():
         path = str(prim.GetPath())
