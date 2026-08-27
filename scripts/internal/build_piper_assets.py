@@ -290,6 +290,61 @@ def postprocess_usd(usd_path):
         print(f"[piper] collision: {cp}")
     if len(collision_paths) > 40:
         print(f"[piper] collision: ... and {len(collision_paths) - 40} more")
+    _audit_referenced_layers(usd_path, stage)
+
+
+def _audit_referenced_layers(usd_path, stage):
+    """piper.usd is a composition container (references configuration/*.usd).
+
+    The runtime stage resolves those references (fingers do collide), but a
+    standalone Stage.Open may leave link<N>/collisions empty. Open each
+    referenced layer directly and report where collision prims actually live,
+    plus the composition arcs on the finger collision prims.
+    """
+    import os
+
+    from pxr import Sdf
+
+    # 1) What does link7/collisions actually reference?
+    for link in ("link7", "link8"):
+        prim = stage.GetObjectAtPath(f"/piper/root_joint/{link}/collisions")
+        if prim is None:
+            print(f"[piper] audit: /{link}/collisions prim missing entirely")
+            continue
+        refs = prim.GetMetadata("references") or []
+        payloads = prim.GetMetadata("payload") or []
+        print(f"[piper] audit: {link}/collisions references={refs} payload={payloads}")
+
+    # 2) Open every configuration/*.usd sibling layer and census collisions.
+    config_dir = os.path.join(os.path.dirname(os.path.abspath(usd_path)), "configuration")
+    if not os.path.isdir(config_dir):
+        print(f"[piper] audit: no configuration dir at {config_dir}")
+        return
+    for fname in sorted(os.listdir(config_dir)):
+        if not fname.endswith(".usd"):
+            continue
+        sub_path = os.path.join(config_dir, fname)
+        try:
+            sub_stage = Usd.Stage.Open(sub_path)
+        except Exception as exc:  # noqa: BLE001 - diagnostic-only
+            print(f"[piper] audit: {fname}: failed to open ({exc})")
+            continue
+        if sub_stage is None:
+            print(f"[piper] audit: {fname}: open returned None")
+            continue
+        hits = [
+            str(p.GetPath()) for p in sub_stage.Traverse() if p.HasAPI(UsdPhysics.CollisionAPI)
+        ]
+        print(f"[piper] audit: {fname}: {len(hits)} collision prims")
+        for h in hits[:20]:
+            print(f"[piper] audit: {fname}: collision {h}")
+        # Any physics materials with friction values?
+        for p in sub_stage.Traverse():
+            if p.GetAttribute("physics:staticFriction"):
+                s = p.GetAttribute("physics:staticFriction").Get()
+                d = p.GetAttribute("physics:dynamicFriction").Get()
+                print(f"[piper] audit: {fname}: material {p.GetPath()} static={s} dynamic={d}")
+                break
     for line in subtree_lines:
         print(f"[piper] finger subtree: {line}")
     if not material_lines:
