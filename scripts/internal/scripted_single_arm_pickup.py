@@ -361,12 +361,11 @@ def set_finger_contact_reporting(env):
 def set_finger_friction(env, static_friction=2.0, dynamic_friction=2.0):
     """High-friction material on the gripper finger collision prims.
 
-    The ManiSkill piper agent assigns static/dynamic friction 2.0 to link7/
-    link8 - with the ~10N grip that yields ~20N of holding friction. The
-    bare URDF-imported piper.usd uses Isaac's default (~0.5-0.7), so smooth
-    objects slip out of the gripper the moment the arm lifts ("gripped but
-    the object never rises"). Patch the CollisionAPI attributes at runtime
-    so no USD regeneration is needed.
+    INEFFECTIVE on this USD/PhysX version: friction is only read from a
+    bound UsdPhysicsMaterial, and runtime authoring after physics init is
+    ignored anyway. Kept as a no-op backstop; the authoritative friction
+    (mu=2.0) is bound by build_piper_assets.py:_bake_finger_friction in
+    configuration/piper_physics.usd.
     """
     from isaacsim.core.utils.stage import get_current_stage
     from pxr import Sdf, UsdPhysics

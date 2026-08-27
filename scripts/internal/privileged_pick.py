@@ -94,7 +94,11 @@ class PrivilegedPickConfig:
     opening_axis_index: int | None = None
     orientation_tilt_degrees: tuple = ()
     pregrasp_clearance_m: float = 0.10
-    grasp_height_fraction: float = 0.55
+    # Grasp at/above the object's widest cross-section: if the fingers sit
+    # below it (0.55 gripped the whisk's ball low), upward slide wedges the
+    # jaws open and the object squirts out (trace: q7 forced open through
+    # lift_1/2). Above the widest girth, slide only tightens the grip.
+    grasp_height_fraction: float = 0.65
     pose_action_repeats: int = 16
     position_tolerance_m: float = 0.02
     orientation_tolerance_rad: float = 0.20

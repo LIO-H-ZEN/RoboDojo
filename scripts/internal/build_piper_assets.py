@@ -309,21 +309,22 @@ def postprocess_usd(usd_path):
 
 
 def _bake_finger_friction(usd_path, static_friction=2.0, dynamic_friction=2.0):
-    """Bake high-friction attributes onto the finger collision prims.
+    """Bind a high-friction physics material onto the finger collision prims.
 
     The collision geometry lives in configuration/piper_physics.usd
-    (/colliders/link7, /colliders/link8), NOT in piper.usd - its empty-path
-    internal references do not compose in a standalone open, which is also
-    why the runtime CollisionAPI friction patch was applied to prims that
-    may not be the real colliders. Bake mu=2.0 (ManiSkill's piper setting)
-    directly into the collider layer so it is loaded before physics starts.
+    (/colliders/link7, /colliders/link8). Friction is ONLY read by PhysX from
+    a bound UsdPhysicsMaterial: bare physics:staticFriction attributes on a
+    CollisionAPI prim are ignored by this USD version (proven at runtime -
+    a 10N pinch slid 8mm up the object with zero friction). Author a
+    material prim and bind it via material:binding:physics, the same
+    mechanism RoboDojo's own rigid objects use.
 
-    Physical change is limited to the two finger collider friction
-    attributes (and restitution 0); geometry, mass, and gains untouched.
+    Physical change is limited to finger-collider friction (and restitution
+    0); geometry, mass, and gains untouched.
     """
     import os
 
-    from pxr import Sdf, Usd, UsdPhysics
+    from pxr import Usd, UsdPhysics
 
     physics_layer = os.path.join(
         os.path.dirname(os.path.abspath(usd_path)), "configuration", "piper_physics.usd"
@@ -335,34 +336,25 @@ def _bake_finger_friction(usd_path, static_friction=2.0, dynamic_friction=2.0):
     if stage is None:
         print(f"[piper] friction bake FAILED: could not open {physics_layer}")
         return
-    patched = 0
+    mat_path = "/PhysicsMaterials/piper_finger_grip"
+    material = UsdPhysics.Material.Define(stage, mat_path)
+    material.CreateStaticFrictionAttr(static_friction)
+    material.CreateDynamicFrictionAttr(dynamic_friction)
+    material.CreateRestitutionAttr(0.0)
+    bound = 0
     for prim in stage.Traverse():
         path = str(prim.GetPath())
         if not (path.startswith("/colliders/link7") or path.startswith("/colliders/link8")):
             continue
         if not prim.HasAPI(UsdPhysics.CollisionAPI):
             continue
-        # This USD build's CollisionAPI class lacks the Create*FrictionAttr
-        # helpers; author the typed attributes directly.
-        prim.CreateAttribute("physics:staticFriction", Sdf.ValueTypeNames.Float).Set(static_friction)
-        prim.CreateAttribute("physics:dynamicFriction", Sdf.ValueTypeNames.Float).Set(dynamic_friction)
-        prim.CreateAttribute("physics:restitution", Sdf.ValueTypeNames.Float).Set(0.0)
-        # CollisionAPI friction attrs are only fallbacks: if a physics
-        # material is bound, its values win - patch that material too.
-        rel = prim.GetRelationship("material:binding:physics")
-        for target in (list(rel.GetForwardedTargets()) if rel is not None else []):
-            mat = stage.GetPrimAtPath(target)
-            if not mat or not mat.IsValid():
-                continue
-            mat.CreateAttribute("physics:staticFriction", Sdf.ValueTypeNames.Float).Set(static_friction)
-            mat.CreateAttribute("physics:dynamicFriction", Sdf.ValueTypeNames.Float).Set(dynamic_friction)
-            print(f"[piper] friction bake: also patched bound material {target}")
-        patched += 1
-    if patched:
+        prim.CreateRelationship("material:binding:physics").SetTargets([mat_path])
+        bound += 1
+    if bound:
         stage.GetRootLayer().Save()
     print(
-        f"[piper] friction bake: mu={static_friction} applied to {patched} finger collision "
-        f"prims in piper_physics.usd"
+        f"[piper] friction bake: material {mat_path} (mu={static_friction}) bound to "
+        f"{bound} finger collision prims in piper_physics.usd"
     )
 
 
