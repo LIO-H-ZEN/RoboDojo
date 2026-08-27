@@ -290,6 +290,13 @@ def postprocess_usd(usd_path):
         print(f"[piper] collision: {cp}")
     if len(collision_paths) > 40:
         print(f"[piper] collision: ... and {len(collision_paths) - 40} more")
+    for line in subtree_lines:
+        print(f"[piper] finger subtree: {line}")
+    if not material_lines:
+        print("[piper] finger material: NO collision prims found under link7/link8 "
+              "- check import config (collision geometry may be missing)")
+    for line in material_lines:
+        print(f"[piper] finger material: {line}")
     _audit_referenced_layers(usd_path, stage)
 
 
@@ -303,7 +310,15 @@ def _audit_referenced_layers(usd_path, stage):
     """
     import os
 
-    # 1) What does link7/collisions actually reference?
+    from pxr import Usd, UsdPhysics
+
+    # 0) Root-layer composition structure: sublayers decide whether the
+    # empty-asset-path references to /colliders/<link> can resolve at all.
+    root_layer = stage.GetRootLayer()
+    print(f"[piper] audit: root sublayers={root_layer.subLayerPaths}")
+
+    # 1) Does /colliders/link7 compose in the open stage? Does link7/collisions
+    # resolve its internal reference, and does the target have CollisionAPI?
     for link in ("link7", "link8"):
         prim = stage.GetObjectAtPath(f"/piper/root_joint/{link}/collisions")
         if prim is None:
@@ -312,6 +327,15 @@ def _audit_referenced_layers(usd_path, stage):
         refs = prim.GetMetadata("references") or []
         payloads = prim.GetMetadata("payload") or []
         print(f"[piper] audit: {link}/collisions references={refs} payload={payloads}")
+        child_count = len(prim.GetChildren())
+        print(f"[piper] audit: {link}/collisions composed children={child_count}")
+    for link in ("link7", "link8"):
+        collider = stage.GetPrimAtPath(f"/colliders/{link}")
+        print(
+            f"[piper] audit: /colliders/{link}: valid={collider.IsValid()} "
+            f"type={collider.GetTypeName()} collisionAPI={collider.HasAPI(UsdPhysics.CollisionAPI)} "
+            f"children={len(collider.GetChildren()) if collider.IsValid() else 0}"
+        )
 
     # 2) Open every configuration/*.usd sibling layer and census collisions.
     config_dir = os.path.join(os.path.dirname(os.path.abspath(usd_path)), "configuration")
@@ -343,13 +367,6 @@ def _audit_referenced_layers(usd_path, stage):
                 d = p.GetAttribute("physics:dynamicFriction").Get()
                 print(f"[piper] audit: {fname}: material {p.GetPath()} static={s} dynamic={d}")
                 break
-    for line in subtree_lines:
-        print(f"[piper] finger subtree: {line}")
-    if not material_lines:
-        print("[piper] finger material: NO collision prims found under link7/link8 "
-              "- check import config (collision geometry may be missing)")
-    for line in material_lines:
-        print(f"[piper] finger material: {line}")
 
 
 def convert_urdf_to_usd(urdf_path, usd_path):
