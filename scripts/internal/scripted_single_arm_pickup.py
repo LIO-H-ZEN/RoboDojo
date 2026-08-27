@@ -446,10 +446,14 @@ class GraspTraceWriter:
         dz = [r.get("target_dz_m") for r in records if r.get("target_dz_m") is not None]
         cf7 = [r.get("contact_force_link7_N") for r in records if r.get("contact_force_link7_N") is not None]
         cf8 = [r.get("contact_force_link8_N") for r in records if r.get("contact_force_link8_N") is not None]
+        nf7 = [r.get("net_contact_force_link7_N") for r in records if r.get("net_contact_force_link7_N") is not None]
+        nf8 = [r.get("net_contact_force_link8_N") for r in records if r.get("net_contact_force_link8_N") is not None]
 
         tau_peak = np.abs(np.asarray(tau)).max(axis=0).tolist() if tau else None
         cf7_peak = float(np.max(cf7)) if cf7 else None
         cf8_peak = float(np.max(cf8)) if cf8 else None
+        nf7_peak = float(np.max(nf7)) if nf7 else None
+        nf8_peak = float(np.max(nf8)) if nf8 else None
         both_contact = any(
             r.get("contact_link7") and r.get("contact_link8") for r in records
         )
@@ -463,6 +467,8 @@ class GraspTraceWriter:
             f"residual_final={None if residual_final is None else round(residual_final, 4)}m "
             f"cf7_peak={None if cf7_peak is None else round(cf7_peak, 2)}N "
             f"cf8_peak={None if cf8_peak is None else round(cf8_peak, 2)}N "
+            f"netf7_peak={None if nf7_peak is None else round(nf7_peak, 2)}N "
+            f"netf8_peak={None if nf8_peak is None else round(nf8_peak, 2)}N "
             f"both_contact={both_contact} "
             f"target_dz_final={None if dz_final is None else round(dz_final, 4)}m",
             flush=True,
@@ -557,12 +563,26 @@ class GraspTraceWriter:
                         record[f"contact_{link_name}"] = None
                 except Exception as exc:
                     record[f"contact_{link_name}_error"] = str(exc)
+                # Cross-check: net contact force on the finger from ALL bodies
+                # (unfiltered). If the filter pattern silently matches nothing,
+                # this still shows the real pinch force against whatever the
+                # finger is touching.
+                try:
+                    net = view.get_net_contact_forces(dt=self.physics_dt)
+                    if net is not None:
+                        net_arr = np.asarray(net, dtype=float).reshape(-1, 3)
+                        net_total = net_arr.sum(axis=0)
+                        record[f"net_contact_force_{link_name}"] = net_total.tolist()
+                        record[f"net_contact_force_{link_name}_N"] = float(np.linalg.norm(net_total))
+                except Exception as exc:
+                    record[f"net_contact_{link_name}_error"] = str(exc)
         else:
             record["contact_available"] = False
 
         self._stage_records.append({k: record[k] for k in (
             "tau_applied", "finger_sep_m", "gripper_residual_m", "target_dz_m",
             "contact_force_link7_N", "contact_force_link8_N",
+            "net_contact_force_link7_N", "net_contact_force_link8_N",
             "contact_link7", "contact_link8",
         ) if k in record})
 
@@ -637,6 +657,12 @@ def _build_contact_views(env, target_info: dict, physics_sim_view) -> dict:
                     max_contact_data_count=8,
                 )
                 views[link_name] = view
+                print(
+                    f"[contact] {link_name} view created at {body_path} "
+                    f"(view.count={getattr(view, 'count', '?')}, "
+                    f"filter_count={getattr(view, 'filter_count', '?')})",
+                    flush=True,
+                )
             except Exception as exc:
                 print(f"[contact] could not create contact view for {link_name}: {exc}", flush=True)
         if views:
