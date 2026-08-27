@@ -49,17 +49,20 @@ def get_robot_config():
             ),
             "gripper": ImplicitActuatorCfg(
                 joint_names_expr=["joint7", "joint8"],
-                # Match the ManiSkill piper agent exactly: force_limit 10 (real
-                # gripper's ~10N payload / MuJoCo forcerange), stiffness 100,
-                # damping 10 (Gazebo joint7 p=100 d=10). An earlier k=1000 hack
-                # tried to force a firmer grip, but with the finger friction now
-                # at mu=2.0 (as ManiSkill sets on link7/link8) it is
-                # unnecessary and harmful: high joint stiffness over-penetrates
-                # on contact and shoves the object out of the jaw, so the grasp
-                # looks closed yet the object never rises. mu=2.0 supplies the
-                # holding force at the lower, PhysX-stable stiffness.
+                # Force limit 10 matches the real gripper's ~10N payload
+                # (MuJoCo forcerange). Stiffness 500 with the residual at a
+                # typical object half-width (~0.02m) saturates the drive at the
+                # 10N cap. The earlier k=100 (ManiSkill parity) produced only
+                # ~2N of pinch force: with PhysX average friction combining
+                # (finger mu=2.0 baked in piper_physics.usd, rigid objects'
+                # mu=0.6) the 2*1.3*2.2N ~ 5.7N friction ceiling barely met
+                # the up-to-0.5kg object weight, and every lift slipped (trace:
+                # residual opens under gravity, then fingers close on air).
+                # The prior "k=1000 was harmful" verdict was measured while the
+                # runtime friction patch silently applied to nothing, so it is
+                # superseded; 500 keeps the 10N effort cap as the limiter.
                 effort_limit_sim=10.0,
-                stiffness=100.0,
+                stiffness=500.0,
                 damping=10.0,
             ),
         },
