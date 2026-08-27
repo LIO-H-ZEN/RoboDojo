@@ -576,6 +576,17 @@ class GraspTraceWriter:
                         record[f"net_contact_force_{link_name}_N"] = float(np.linalg.norm(net_total))
                 except Exception as exc:
                     record[f"net_contact_{link_name}_error"] = str(exc)
+                # Filtered contact-pair count: distinguishes "no contact data
+                # flows at all" (count 0 with real contact) from "forces read
+                # wrongly" (count > 0 but force 0).
+                try:
+                    counts = view.get_contact_count()
+                    if counts is not None:
+                        record[f"contact_count_{link_name}"] = int(
+                            np.asarray(_contact_buffer_to_numpy(counts)).reshape(-1)[0]
+                        )
+                except Exception as exc:
+                    record[f"contact_count_{link_name}_error"] = str(exc)
         else:
             record["contact_available"] = False
 

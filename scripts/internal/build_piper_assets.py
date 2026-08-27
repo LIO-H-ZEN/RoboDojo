@@ -298,6 +298,54 @@ def postprocess_usd(usd_path):
     for line in material_lines:
         print(f"[piper] finger material: {line}")
     _audit_referenced_layers(usd_path, stage)
+    _bake_finger_friction(usd_path)
+
+
+def _bake_finger_friction(usd_path, static_friction=2.0, dynamic_friction=2.0):
+    """Bake high-friction attributes onto the finger collision prims.
+
+    The collision geometry lives in configuration/piper_physics.usd
+    (/colliders/link7, /colliders/link8), NOT in piper.usd - its empty-path
+    internal references do not compose in a standalone open, which is also
+    why the runtime CollisionAPI friction patch was applied to prims that
+    may not be the real colliders. Bake mu=2.0 (ManiSkill's piper setting)
+    directly into the collider layer so it is loaded before physics starts.
+
+    Physical change is limited to the two finger collider friction
+    attributes (and restitution 0); geometry, mass, and gains untouched.
+    """
+    import os
+
+    from pxr import Usd, UsdPhysics
+
+    physics_layer = os.path.join(
+        os.path.dirname(os.path.abspath(usd_path)), "configuration", "piper_physics.usd"
+    )
+    if not os.path.isfile(physics_layer):
+        print(f"[piper] friction bake FAILED: {physics_layer} not found")
+        return
+    stage = Usd.Stage.Open(physics_layer)
+    if stage is None:
+        print(f"[piper] friction bake FAILED: could not open {physics_layer}")
+        return
+    patched = 0
+    for prim in stage.Traverse():
+        path = str(prim.GetPath())
+        if not (path.startswith("/colliders/link7") or path.startswith("/colliders/link8")):
+            continue
+        if not prim.HasAPI(UsdPhysics.CollisionAPI):
+            continue
+        collision = UsdPhysics.CollisionAPI(prim)
+        collision.CreateStaticFrictionAttr(static_friction)
+        collision.CreateDynamicFrictionAttr(dynamic_friction)
+        collision.CreateRestitutionAttr(0.0)
+        patched += 1
+    if patched:
+        stage.GetRootLayer().Save()
+    print(
+        f"[piper] friction bake: mu={static_friction} applied to {patched} finger collision "
+        f"prims in piper_physics.usd"
+    )
 
 
 def _audit_referenced_layers(usd_path, stage):
