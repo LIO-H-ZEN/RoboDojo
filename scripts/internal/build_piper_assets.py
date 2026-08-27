@@ -226,6 +226,55 @@ planner:
     print(f"[piper] wrote {path}")
 
 
+def postprocess_usd(usd_path):
+    """Bake PhysxContactReportAPI onto the finger rigid bodies (link7/link8).
+
+    scripted_single_arm_pickup.py reads per-finger contact forces through
+    PhysX rigid contact views. Applying the report API at runtime - after the
+    TaskEnv has initialized physics - is ignored by the running PhysX scene
+    ("Failed to find contact report API"), so it must live in the asset USD.
+    Diagnostic-only: no mass, friction, gain, or collision-geometry change.
+
+    Also reports (no edits) the physics material and friction bound to each
+    finger collision prim - if a material is bound, runtime friction edits on
+    the CollisionAPI fallback attributes are ignored by PhysX.
+    """
+    from pxr import PhysxSchema, Usd, UsdPhysics
+
+    stage = Usd.Stage.Open(usd_path)
+    if stage is None:
+        print("[piper] post-process FAILED: could not open usd stage")
+        return
+    patched = 0
+    material_lines = []
+    for prim in stage.Traverse():
+        path = str(prim.GetPath())
+        if not (path.endswith("/link7") or path.endswith("/link8")):
+            continue
+        if not prim.HasAPI(PhysxSchema.PhysxContactReportAPI):
+            PhysxSchema.PhysxContactReportAPI.Apply(prim)
+        patched += 1
+        # Report collision-material bindings under this finger link.
+        for child in prim.GetChildren():
+            if not child.HasAPI(UsdPhysics.CollisionAPI):
+                continue
+            rel = child.GetRelationship("material:binding:physics")
+            targets = list(rel.GetForwardedTargets()) if rel is not None else []
+            if not targets:
+                material_lines.append(f"{child.GetPath()}: no physics material binding")
+                continue
+            mat = stage.GetPrimAtPath(targets[0])
+            static = mat.GetAttribute("physics:staticFriction").Get() if mat else None
+            dynamic = mat.GetAttribute("physics:dynamicFriction").Get() if mat else None
+            material_lines.append(
+                f"{child.GetPath()}: material={targets[0]} static={static} dynamic={dynamic}"
+            )
+    stage.GetRootLayer().Save()
+    print(f"[piper] post-process: contact report applied to {patched} finger body prims")
+    for line in material_lines:
+        print(f"[piper] finger material: {line}")
+
+
 def convert_urdf_to_usd(urdf_path, usd_path):
     from isaaclab.app import AppLauncher
 
@@ -274,6 +323,7 @@ def convert_urdf_to_usd(urdf_path, usd_path):
     print(f"[piper] urdf->usd result={result}")
 
     if os.path.isfile(usd_path):
+        postprocess_usd(usd_path)
         print(f"[piper] SUCCESS: {usd_path} ({os.path.getsize(usd_path)} bytes)")
     else:
         print(f"[piper] FAILED: {usd_path} was not created")

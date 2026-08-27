@@ -328,10 +328,10 @@ class EpisodeRecorder:
 def set_finger_contact_reporting(env):
     """Enable PhysX contact-report API on link7/link8 collision prims.
 
-    Without this, create_rigid_contact_view silently returns empty buffers for
-    these bodies because they have no PhysxContactReportAPI schema applied.
-    This call is diagnostic-only: it does not change friction, mass, gain,
-    gravity, or collision geometry.
+    NOTE: a running PhysX scene does not register report APIs applied after
+    physics initialization - the authoritative copy is baked into piper.usd by
+    build_piper_assets.py:postprocess_usd(). This runtime pass is a fallback
+    that at least marks the prims and reports what it found.
     """
     from isaacsim.core.utils.stage import get_current_stage
 
