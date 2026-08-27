@@ -247,6 +247,7 @@ def postprocess_usd(usd_path):
         return
     patched = 0
     material_lines = []
+    subtree_lines = []
     for prim in stage.Traverse():
         path = str(prim.GetPath())
         if not (path.endswith("/link7") or path.endswith("/link8")):
@@ -254,12 +255,16 @@ def postprocess_usd(usd_path):
         if not prim.HasAPI(PhysxSchema.PhysxContactReportAPI):
             PhysxSchema.PhysxContactReportAPI.Apply(prim)
         patched += 1
-        # Report collision-material bindings anywhere in this finger subtree
-        # (importer nests collision prims under link7/collision/...).
+        if prim.IsInstanceable():
+            subtree_lines.append(f"{path}: INSTANCEABLE - children hidden from Traverse")
+        # Dump the full finger subtree: every prim with its applied schemas,
+        # so collision placement/naming is visible whatever the importer did.
         for child in stage.Traverse():
             child_path = str(child.GetPath())
             if not child_path.startswith(path + "/"):
                 continue
+            schemas = ",".join(child.GetAppliedSchemas()) or "-"
+            subtree_lines.append(f"{child_path}: type={child.GetTypeName()} api=[{schemas}]")
             if not child.HasAPI(UsdPhysics.CollisionAPI):
                 continue
             rel = child.GetRelationship("material:binding:physics")
@@ -275,6 +280,18 @@ def postprocess_usd(usd_path):
             )
     stage.GetRootLayer().Save()
     print(f"[piper] post-process: contact report applied to {patched} finger body prims")
+    # Census: every collision prim in the whole robot asset. Shows where
+    # collision geometry actually lives if not under link7/link8.
+    collision_paths = [
+        str(p.GetPath()) for p in stage.Traverse() if p.HasAPI(UsdPhysics.CollisionAPI)
+    ]
+    print(f"[piper] collision census: {len(collision_paths)} collision prims in asset")
+    for cp in collision_paths[:40]:
+        print(f"[piper] collision: {cp}")
+    if len(collision_paths) > 40:
+        print(f"[piper] collision: ... and {len(collision_paths) - 40} more")
+    for line in subtree_lines:
+        print(f"[piper] finger subtree: {line}")
     if not material_lines:
         print("[piper] finger material: NO collision prims found under link7/link8 "
               "- check import config (collision geometry may be missing)")
