@@ -370,7 +370,7 @@ def install_eval_env_shims(env, recorder):
         if robot.robot_name != "piper":
             return None
         try:
-            return rm.get_gripper_telemetry(robot, env_idx=0)
+            return env.robot_manager.get_gripper_telemetry(robot, env_idx=0)
         except Exception as exc:
             return {"error": str(exc)}
 
