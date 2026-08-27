@@ -412,6 +412,7 @@ class GraspTraceWriter:
         self._prev_target_vel = None  # for finite-difference acceleration
         self._contact_views: dict = {}  # {"link7": view, "link8": view}
         self._contact_available = False
+        self._stage_records: list = []
 
     def new_episode(self, seed: int, ep: int, contact_views: dict | None = None):
         self.close_episode()
@@ -921,8 +922,8 @@ def main():
                     env._trace_target_info = {"instance_name": inst_name, "initial_z": init_z}
                 # Build per-finger contact views filtered to the target prim.
                 try:
-                    from omni.physics.tensors.impl.api import SimulationView as _SimView
-                    psv = _SimView()
+                    from isaacsim.core.simulation_manager import SimulationManager as _SM
+                    psv = _SM.get_physics_sim_view()
                     contact_views = _build_contact_views(env, env._trace_target_info, psv)
                 except Exception as exc:
                     print(f"[contact] physics sim view unavailable: {exc}", flush=True)
