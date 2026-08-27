@@ -233,6 +233,8 @@ class PrivilegedPickController:
                 self._execute_joint_hold(f"prelift_hold_{index}", robot, gripper=0.0)
                 self._ensure_episode_running(f"prelift_hold_{index}")
 
+            self._log_grasp_contact(robot, target)
+
             # Lift direction: vertical by default; optionally tilted outward
             # (away from the arm base) so the arm extends instead of folding
             # tight at the top of the lift.
@@ -670,6 +672,81 @@ class PrivilegedPickController:
         else:
             normalized = (upper - real_value) / (upper - lower)
         return float(np.clip(normalized, 0.0, 1.0))
+
+    def _log_grasp_contact(self, robot: Any, target: Mapping[str, Any]) -> None:
+        """Measure whether the closed jaws actually captured the object.
+
+        The single decisive signal for "the object never rises": is there a
+        body between the fingers at all? Two independent reads:
+          * gripper residual opening - if it settles near the fully-closed
+            value the jaws met with nothing between them (missed / empty
+            close); if it stops at ~ the object's half-width there IS a body
+            in the jaw and the failure is holding force, not capture.
+          * finger world positions vs the object bbox - are link7/link8
+            straddling the object center, or closing beside it?
+        Read-only; never changes the scene.
+        """
+        info: dict[str, Any] = {}
+        try:
+            residual = float(
+                self.robot_manager.get_end_effector_real_val(robot, env_idx_list=[self.env_idx])[self.env_idx][0]
+            )
+            lower, upper = [float(v) for v in robot.gripper_scale]
+            info["gripper_residual_m"] = residual
+            info["gripper_open_fraction"] = float(np.clip((residual - lower) / (upper - lower), 0.0, 1.0))
+            info["gripper_scale"] = [lower, upper]
+        except Exception as exc:  # diagnostics must never abort the grasp
+            info["gripper_read_error"] = str(exc)
+
+        finger_positions = {}
+        for link_name in ("link7", "link8"):
+            try:
+                pose = self.robot_manager.get_link_pose(
+                    robot, link_name, env_idx_list=[self.env_idx], is_relative=True
+                )[self.env_idx]
+                finger_positions[link_name] = _as_numpy(pose, name=f"{link_name} pose").reshape(-1)[:3]
+            except Exception as exc:
+                info.setdefault("link_read_errors", {})[link_name] = str(exc)
+
+        bbox_min = np.asarray(target["world_bbox_min"], dtype=float)
+        bbox_max = np.asarray(target["world_bbox_max"], dtype=float)
+        grasp_point = np.asarray(target["grasp_point"], dtype=float)
+        obj_center = (bbox_min + bbox_max) / 2.0
+        info["object_bbox_min"] = bbox_min
+        info["object_bbox_max"] = bbox_max
+        info["grasp_point"] = grasp_point
+
+        if "link7" in finger_positions and "link8" in finger_positions:
+            f7 = finger_positions["link7"]
+            f8 = finger_positions["link8"]
+            midpoint = (f7 + f8) / 2.0
+            info["finger7_pos"] = f7
+            info["finger8_pos"] = f8
+            info["finger_separation_m"] = float(np.linalg.norm(f7 - f8))
+            info["finger_midpoint_pos"] = midpoint
+            info["midpoint_to_grasp_point_m"] = float(np.linalg.norm(midpoint - grasp_point))
+            info["midpoint_to_object_center_xy_m"] = float(np.linalg.norm((midpoint - obj_center)[:2]))
+            # Is the object center between the two fingers along the opening
+            # line? Project object center onto the finger axis.
+            axis = f7 - f8
+            axis_len = float(np.linalg.norm(axis))
+            if axis_len > 1e-6:
+                unit = axis / axis_len
+                proj = float(np.dot(obj_center - f8, unit))
+                info["object_center_between_jaws"] = bool(0.0 <= proj <= axis_len)
+
+        self.report["grasp_contact"] = self._json_value(info)
+        sep = info.get("finger_separation_m")
+        residual = info.get("gripper_residual_m")
+        d_center = info.get("midpoint_to_object_center_xy_m")
+        between = info.get("object_center_between_jaws")
+        print(
+            f"[PrivilegedPick] grasp-contact: gripper_residual={residual if residual is None else round(residual, 4)}m "
+            f"finger_sep={sep if sep is None else round(sep, 4)}m "
+            f"midpoint->obj_center_xy={d_center if d_center is None else round(d_center, 4)}m "
+            f"obj_between_jaws={between}",
+            flush=True,
+        )
 
     def _finish_lift_evaluation(self) -> None:
         post_action_z = self._target_z()
