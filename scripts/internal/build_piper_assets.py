@@ -316,7 +316,7 @@ def _bake_finger_friction(usd_path, static_friction=2.0, dynamic_friction=2.0):
     """
     import os
 
-    from pxr import Usd, UsdPhysics
+    from pxr import Sdf, Usd, UsdPhysics
 
     physics_layer = os.path.join(
         os.path.dirname(os.path.abspath(usd_path)), "configuration", "piper_physics.usd"
@@ -335,10 +335,21 @@ def _bake_finger_friction(usd_path, static_friction=2.0, dynamic_friction=2.0):
             continue
         if not prim.HasAPI(UsdPhysics.CollisionAPI):
             continue
-        collision = UsdPhysics.CollisionAPI(prim)
-        collision.CreateStaticFrictionAttr(static_friction)
-        collision.CreateDynamicFrictionAttr(dynamic_friction)
-        collision.CreateRestitutionAttr(0.0)
+        # This USD build's CollisionAPI class lacks the Create*FrictionAttr
+        # helpers; author the typed attributes directly.
+        prim.CreateAttribute("physics:staticFriction", Sdf.ValueTypeNames.Float).Set(static_friction)
+        prim.CreateAttribute("physics:dynamicFriction", Sdf.ValueTypeNames.Float).Set(dynamic_friction)
+        prim.CreateAttribute("physics:restitution", Sdf.ValueTypeNames.Float).Set(0.0)
+        # CollisionAPI friction attrs are only fallbacks: if a physics
+        # material is bound, its values win - patch that material too.
+        rel = prim.GetRelationship("material:binding:physics")
+        for target in (list(rel.GetForwardedTargets()) if rel is not None else []):
+            mat = stage.GetPrimAtPath(target)
+            if not mat or not mat.IsValid():
+                continue
+            mat.CreateAttribute("physics:staticFriction", Sdf.ValueTypeNames.Float).Set(static_friction)
+            mat.CreateAttribute("physics:dynamicFriction", Sdf.ValueTypeNames.Float).Set(dynamic_friction)
+            print(f"[piper] friction bake: also patched bound material {target}")
         patched += 1
     if patched:
         stage.GetRootLayer().Save()

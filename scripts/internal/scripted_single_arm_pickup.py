@@ -369,7 +369,7 @@ def set_finger_friction(env, static_friction=2.0, dynamic_friction=2.0):
     so no USD regeneration is needed.
     """
     from isaacsim.core.utils.stage import get_current_stage
-    from pxr import UsdPhysics
+    from pxr import Sdf, UsdPhysics
 
     stage = get_current_stage()
     if stage is None:
@@ -382,10 +382,13 @@ def set_finger_friction(env, static_friction=2.0, dynamic_friction=2.0):
             continue
         if not prim.HasAPI(UsdPhysics.CollisionAPI):
             continue
-        collision = UsdPhysics.CollisionAPI(prim)
-        collision.CreateStaticFrictionAttr(static_friction)
-        collision.CreateDynamicFrictionAttr(dynamic_friction)
-        collision.CreateRestitutionAttr(0.0)
+        # CollisionAPI friction attrs are fallbacks used only when no physics
+        # material is bound. The authoritative friction is baked into
+        # piper_physics.usd by build_piper_assets.py; this runtime pass is a
+        # best-effort backstop.
+        prim.CreateAttribute("physics:staticFriction", Sdf.ValueTypeNames.Float).Set(static_friction)
+        prim.CreateAttribute("physics:dynamicFriction", Sdf.ValueTypeNames.Float).Set(dynamic_friction)
+        prim.CreateAttribute("physics:restitution", Sdf.ValueTypeNames.Float).Set(0.0)
         patched += 1
     print(f"[friction] patched {patched} finger collision prims "
           f"(static={static_friction}, dynamic={dynamic_friction})", flush=True)
