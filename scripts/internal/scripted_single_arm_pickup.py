@@ -23,6 +23,8 @@ import importlib
 import os
 import sys
 
+import transforms3d as t3d
+
 from isaaclab.app import AppLauncher
 
 parser = argparse.ArgumentParser()
@@ -496,11 +498,23 @@ def camera_pose_probe(env, robot):
     robot_key = rm.robot_key[rm.robot_list.index(robot)]
     print(f"[camera-probe] robot bodies: {robot_key.body_names}", flush=True)
 
-    for link_name in ("link6", "gripper_base", "link7", "link8"):
+    for link_name in ("link6", "gripper_base", "piper_tcp", "link7", "link8"):
         if link_name not in robot_key.body_names:
             continue
         pose = rm.get_link_pose(robot, link_name, env_idx_list=[0], is_relative=False)[0]
         print(f"[camera-probe] link {link_name:12s}: {np.round(pose, 5).tolist()}", flush=True)
+
+    if "link6" in robot_key.body_names and "piper_tcp" in robot_key.body_names:
+        link6_pose = rm.get_link_pose(robot, "link6", env_idx_list=[0], is_relative=False)[0]
+        tcp_pose = rm.get_link_pose(robot, "piper_tcp", env_idx_list=[0], is_relative=False)[0]
+        link6_rot = t3d.quaternions.quat2mat(np.asarray(link6_pose[3:], dtype=float))
+        offset_world = np.asarray(tcp_pose[:3], dtype=float) - np.asarray(link6_pose[:3], dtype=float)
+        offset_local = link6_rot.T @ offset_world
+        print(
+            f"[camera-probe] link6->piper_tcp: local={np.round(offset_local, 5).tolist()} "
+            f"length={np.linalg.norm(offset_local):.4f}m",
+            flush=True,
+        )
 
     for cam_id, cam_name in enumerate(env.camera_manager.camera_names[0]):
         camera_xform = env.camera_manager.cameras_xform[0][cam_id]

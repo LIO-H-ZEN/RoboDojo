@@ -511,6 +511,13 @@ class RobotManager:
             robot.gripper_joints_name = gripper_names
 
             if robot.robot_type == "arm":
+                body_names = list(self.robot_key[idx].body_names)
+                if robot.ee_link_name not in body_names:
+                    raise ValueError(
+                        f"Robot {robot.robot_name!r} config requires ee_link={robot.ee_link_name!r}, "
+                        f"but the imported articulation exposes body_names={body_names}. "
+                        "Regenerate the robot USD together with robot_config.yml and curobo.yml."
+                    )
                 robot.arm_joint_indices, arm_names = self.robot_key[idx].find_joints(robot.arm_joints_name)
                 robot.arm_joints_name = arm_names
                 robot.action_dim = len(robot.arm_joint_indices)

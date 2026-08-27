@@ -28,6 +28,7 @@ class Piper:
         self.gripper_move = self.robot_args["gripper_move"]
         self.gripper_joints_name = self.robot_args["gripper_joints_name"]
         self.gripper_bias = self.robot_args["gripper_bias"]
+        self.ee_link_is_physical_tcp = self.robot_args.get("ee_link_is_physical_tcp", False)
         self.gripper_scale = self.robot_args["gripper_scale"]
         self.base_link = self.robot_args.get("base_link", "base_link")
         self.delta_matrix = np.array(self.robot_args.get("delta_matrix", [[1, 0, 0], [0, 1, 0], [0, 0, 1]]))

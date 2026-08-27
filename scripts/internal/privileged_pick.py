@@ -207,18 +207,18 @@ class PrivilegedPickController:
             self.report["robot_selection"] = self._json_value(selected["selection_report"])
             robot = selected["robot"]
             quaternion = selected["quaternion"]
-            grasp_link_position = selected["grasp_link_position"]
-            pregrasp_link_position = selected["pregrasp_link_position"]
+            grasp_ee_position = selected["grasp_ee_position"]
+            pregrasp_ee_position = selected["pregrasp_ee_position"]
 
             self._capture_video_frame("initial")
             self._execute_joint_hold("open_gripper", robot, gripper=1.0)
             self._ensure_episode_running("open_gripper")
-            self._execute_pose("pregrasp", robot, pregrasp_link_position, quaternion, gripper=1.0)
+            self._execute_pose("pregrasp", robot, pregrasp_ee_position, quaternion, gripper=1.0)
             self._ensure_episode_running("pregrasp")
 
             descend_positions = linear_waypoints(
-                pregrasp_link_position,
-                grasp_link_position,
+                pregrasp_ee_position,
+                grasp_ee_position,
                 self.config.descend_waypoints,
             )
             for index, position in enumerate(descend_positions, start=1):
@@ -241,7 +241,7 @@ class PrivilegedPickController:
             lift_dir = np.array([0.0, 0.0, 1.0])
             if self.config.lift_outward_tilt_deg > 0.0:
                 base_xy = np.asarray(robot.entity_origin_pose[:2], dtype=float)
-                outward = np.asarray(grasp_link_position[:2], dtype=float) - base_xy
+                outward = np.asarray(grasp_ee_position[:2], dtype=float) - base_xy
                 norm = float(np.linalg.norm(outward))
                 if norm > 1e-6:
                     outward = outward / norm
@@ -249,8 +249,8 @@ class PrivilegedPickController:
                     lift_dir = np.array(
                         [np.sin(tilt) * outward[0], np.sin(tilt) * outward[1], np.cos(tilt)]
                     )
-            lift_end = grasp_link_position + lift_dir * self.config.lift_distance_m
-            lift_positions = linear_waypoints(grasp_link_position, lift_end, self.config.lift_waypoints)
+            lift_end = grasp_ee_position + lift_dir * self.config.lift_distance_m
+            lift_positions = linear_waypoints(grasp_ee_position, lift_end, self.config.lift_waypoints)
             for index, position in enumerate(lift_positions, start=1):
                 stage = f"lift_{index}"
                 try:
@@ -473,7 +473,9 @@ class PrivilegedPickController:
                 )
                 continue
 
-            gripper_bias = float(getattr(robot, "gripper_bias", 0.0))
+            legacy_gripper_bias = float(getattr(robot, "gripper_bias", 0.0))
+            ee_link_is_physical_tcp = bool(getattr(robot, "ee_link_is_physical_tcp", False))
+            applied_gripper_bias = 0.0 if ee_link_is_physical_tcp else legacy_gripper_bias
             # Orientation candidates: the canonical quaternion first, then
             # small tilts (config) for wrists that cannot reach exact vertical
             # (e.g. piper joint5 +-70deg vs the ~90deg a top-down grasp needs)
@@ -498,8 +500,8 @@ class PrivilegedPickController:
             for base_label, base_quat in self._grasp_orientation_bases(quaternion):
                 base_mat = t3d.quaternions.quat2mat(base_quat)
                 base_approach = base_mat[:, self.config.approach_axis_index]
-                grasp_link_position = np.asarray(target["grasp_point"]) - base_approach * gripper_bias
-                pregrasp_link_position = grasp_link_position - base_approach * self.config.pregrasp_clearance_m
+                grasp_ee_position = np.asarray(target["grasp_point"]) - base_approach * applied_gripper_bias
+                pregrasp_ee_position = grasp_ee_position - base_approach * self.config.pregrasp_clearance_m
                 for yaw_deg in self._ordered_yaw_candidates(base_mat, long_axis):
                     if yaw_deg == 0.0:
                         quaternion_try = base_quat
@@ -508,12 +510,12 @@ class PrivilegedPickController:
                         # the yaw angle must be the THIRD argument (z axis).
                         # As the first argument it is an X-axis rotation that
                         # tips the tool horizontal - the arm then grasps
-                        # forward and misses by exactly gripper_bias.
+                        # forward and misses the grasp point by the TCP offset.
                         yaw_mat = t3d.euler.euler2mat(0.0, 0.0, np.deg2rad(yaw_deg), "sxyz")
                         quaternion_try = normalize_quaternion(
                             t3d.quaternions.mat2quat(yaw_mat @ base_mat)
                         )
-                    pregrasp_pose = np.concatenate([pregrasp_link_position, quaternion_try])
+                    pregrasp_pose = np.concatenate([pregrasp_ee_position, quaternion_try])
                     ik_result = self.robot_manager.solve_ik(
                         target_pose=pregrasp_pose.tolist(),
                         env_idx=self.env_idx,
@@ -532,7 +534,7 @@ class PrivilegedPickController:
                 env_idx_list=[self.env_idx],
                 is_relative=True,
             )[self.env_idx]
-            distance = float(np.linalg.norm(_as_numpy(end_pose, name="end pose")[:3] - pregrasp_link_position))
+            distance = float(np.linalg.norm(_as_numpy(end_pose, name="end pose")[:3] - pregrasp_ee_position))
             candidates.append(
                 {
                     "arm_name": robot.arm_name,
@@ -541,14 +543,17 @@ class PrivilegedPickController:
                     "object_long_axis": long_axis,
                     "yaw_variant_deg": yaw_variant,
                     "approach_axis": approach,
-                    "gripper_bias_m": gripper_bias,
-                    "pregrasp_pose": np.concatenate([pregrasp_link_position, quaternion]),
+                    "ee_link_name": robot.ee_link_name,
+                    "ee_link_is_physical_tcp": ee_link_is_physical_tcp,
+                    "legacy_gripper_bias_m": legacy_gripper_bias,
+                    "applied_gripper_bias_m": applied_gripper_bias,
+                    "pregrasp_pose": np.concatenate([pregrasp_ee_position, quaternion]),
                     "ik_status": ik_result.get("status", "Unknown"),
                     "distance_to_pregrasp_m": distance,
                     "robot": robot,
                     "quaternion": quaternion,
-                    "grasp_link_position": grasp_link_position,
-                    "pregrasp_link_position": pregrasp_link_position,
+                    "grasp_ee_position": grasp_ee_position,
+                    "pregrasp_ee_position": pregrasp_ee_position,
                 }
             )
 
@@ -562,7 +567,7 @@ class PrivilegedPickController:
             report_item = {
                 key: value
                 for key, value in item.items()
-                if key not in {"robot", "quaternion", "grasp_link_position", "pregrasp_link_position"}
+                if key not in {"robot", "quaternion", "grasp_ee_position", "pregrasp_ee_position"}
             }
             report_item["selected"] = item is selected
             selection_report.append(report_item)
@@ -699,6 +704,17 @@ class PrivilegedPickController:
             info["gripper_read_error"] = str(exc)
 
         finger_positions = {}
+        ee_position = None
+        try:
+            ee_pose = self.robot_manager.get_real_endpose(
+                robot, env_idx_list=[self.env_idx], is_relative=True
+            )[self.env_idx]
+            ee_position = _as_numpy(ee_pose, name="ee pose").reshape(-1)[:3]
+            info["ee_link_name"] = robot.ee_link_name
+            info["ee_position"] = ee_position
+        except Exception as exc:
+            info["ee_read_error"] = str(exc)
+
         for link_name in ("link7", "link8"):
             try:
                 pose = self.robot_manager.get_link_pose(
@@ -725,7 +741,12 @@ class PrivilegedPickController:
             info["finger_separation_m"] = float(np.linalg.norm(f7 - f8))
             info["finger_midpoint_pos"] = midpoint
             info["midpoint_to_grasp_point_m"] = float(np.linalg.norm(midpoint - grasp_point))
+            info["midpoint_to_grasp_point_z_m"] = float(midpoint[2] - grasp_point[2])
             info["midpoint_to_object_center_xy_m"] = float(np.linalg.norm((midpoint - obj_center)[:2]))
+            info["midpoint_to_object_center_z_m"] = float(midpoint[2] - obj_center[2])
+            if ee_position is not None:
+                info["ee_to_finger_midpoint_m"] = float(np.linalg.norm(ee_position - midpoint))
+                info["ee_to_finger_midpoint_z_m"] = float(ee_position[2] - midpoint[2])
             # Is the object center between the two fingers along the opening
             # line? Project object center onto the finger axis.
             axis = f7 - f8
@@ -739,11 +760,15 @@ class PrivilegedPickController:
         sep = info.get("finger_separation_m")
         residual = info.get("gripper_residual_m")
         d_center = info.get("midpoint_to_object_center_xy_m")
+        z_grasp = info.get("midpoint_to_grasp_point_z_m")
+        ee_mid = info.get("ee_to_finger_midpoint_m")
         between = info.get("object_center_between_jaws")
         print(
             f"[PrivilegedPick] grasp-contact: gripper_residual={residual if residual is None else round(residual, 4)}m "
             f"finger_sep={sep if sep is None else round(sep, 4)}m "
             f"midpoint->obj_center_xy={d_center if d_center is None else round(d_center, 4)}m "
+            f"midpoint->grasp_z={z_grasp if z_grasp is None else round(z_grasp, 4)}m "
+            f"ee->midpoint={ee_mid if ee_mid is None else round(ee_mid, 4)}m "
             f"obj_between_jaws={between}",
             flush=True,
         )
