@@ -254,6 +254,13 @@ def postprocess_usd(usd_path):
             continue
         if not prim.HasAPI(PhysxSchema.PhysxContactReportAPI):
             PhysxSchema.PhysxContactReportAPI.Apply(prim)
+        # Mirror IsaacLab's activate_contact_sensors exactly: a report API
+        # alone is not enough - contacts below physxContactReport:threshold
+        # are dropped, and a body that goes to sleep reports nothing.
+        from pxr import Sdf
+
+        prim.CreateAttribute("physxContactReport:threshold", Sdf.ValueTypeNames.Float).Set(0.0)
+        prim.CreateAttribute("physxRigidBody:sleepThreshold", Sdf.ValueTypeNames.Float).Set(0.0)
         patched += 1
         if prim.IsInstanceable():
             subtree_lines.append(f"{path}: INSTANCEABLE - children hidden from Traverse")
