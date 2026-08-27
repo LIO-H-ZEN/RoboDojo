@@ -14,3 +14,6 @@ def test_generated_wrist_camera_mounts_on_imported_usd_link(tmp_path):
 
     content = (tmp_path / "robot_config.yml").read_text(encoding="utf-8")
     assert "link: root_joint/gripper_base" in content
+    assert "ee_link: piper_tcp" in content
+    assert "ee_link_is_physical_tcp: true" in content
+    assert "gripper_rate_limit: 1.0" in content

@@ -19,10 +19,15 @@ class MetaControl:  # Single control signal for one env step
             )
             return {"position": position, "velocity": velocity}
 
-        def process_gripper_val(robot_manager, robot, position, gripper_eps=0.2, env_idx=None):
+        def process_gripper_val(robot_manager, robot, position, env_idx=None):
             real_gripper_val = robot_manager.get_end_effector_real_val(robot, env_idx_list=[env_idx])[env_idx]
             real_gripper_val = real_gripper_val[0]
             scale = robot.gripper_scale
+            gripper_eps = float(getattr(robot, "gripper_rate_limit", 0.2))
+            if not 0.0 < gripper_eps <= 1.0:
+                raise ValueError(
+                    f"Invalid gripper_rate_limit={gripper_eps} for {robot.robot_name}; expected (0, 1]."
+                )
             percentage = np.abs(position - real_gripper_val) / (scale[1] - scale[0])
             if percentage < gripper_eps:
                 val = position
@@ -43,7 +48,7 @@ class MetaControl:  # Single control signal for one env step
                     if robot.ee_type == "gripper":
                         position = get_dict(key)["position"]
                         gripper_val = process_gripper_val(
-                            robot_manager, robot, position[0], gripper_eps=0.2, env_idx=env_idx
+                            robot_manager, robot, position[0], env_idx=env_idx
                         )
                         res[key] = {"position": gripper_val, "velocity": get_dict(key)["velocity"]}
                     else:

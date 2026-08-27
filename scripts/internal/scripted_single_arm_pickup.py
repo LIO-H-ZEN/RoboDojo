@@ -364,6 +364,27 @@ def install_eval_env_shims(env, recorder):
     take_action / is_episode_end are adapted from src/eval_client/eval_env.py
     (single-arm joint-action path); get_obs_batch routes to the recorder.
     """
+    env.gripper_telemetry_actions = []
+
+    def _gripper_telemetry_snapshot(robot):
+        if robot.robot_name != "piper":
+            return None
+        try:
+            return rm.get_gripper_telemetry(robot, env_idx=0)
+        except Exception as exc:
+            return {"error": str(exc)}
+
+    def _summarize_gripper_telemetry(samples):
+        if not samples:
+            return None
+        summary = {"steps": len(samples), "final": samples[-1]}
+        for field in ("computed_torque_estimate", "applied_torque_estimate"):
+            values = [sample.get(field) for sample in samples if sample.get(field) is not None]
+            if values:
+                matrix = np.asarray(values, dtype=float)
+                summary[f"{field}_abs_peak"] = np.abs(matrix).max(axis=0)
+                summary[f"{field}_abs_mean"] = np.abs(matrix).mean(axis=0)
+        return summary
 
     def take_action(action):
         if env.end_flag[0] or env.take_action_cnt[0] >= env.step_lim:
@@ -411,12 +432,35 @@ def install_eval_env_shims(env, recorder):
         cm = rm.control_manager
         cm.push([0], [seq])
         step_cnt = 0
+        telemetry_samples = {robot: [] for robot in targets if robot.robot_name == "piper"}
         while not cm.get_empty([0]):
             env.step(cm.pop(env_idx_list=[0]))
             env.sim_step(render=False)
             step_cnt += 1
+            for robot, samples in telemetry_samples.items():
+                sample = _gripper_telemetry_snapshot(robot)
+                if sample is not None:
+                    samples.append(sample)
             if step_cnt % GRAB_EVERY == 0:
                 recorder.grab()
+        for robot, samples in telemetry_samples.items():
+            summary = _summarize_gripper_telemetry(samples)
+            if summary is None:
+                continue
+            env.gripper_telemetry_actions.append(summary)
+            env.last_gripper_telemetry = summary
+            final = summary["final"]
+            q = final.get("joint_pos")
+            target = final.get("joint_pos_target")
+            torque = final.get("applied_torque_estimate")
+            print(
+                f"[grip-diag] steps={summary['steps']} "
+                f"q={None if q is None else np.round(q, 4).tolist()} "
+                f"target={None if target is None else np.round(target, 4).tolist()} "
+                f"tau_applied={None if torque is None else np.round(torque, 3).tolist()} "
+                f"rate_limit={final.get('gripper_rate_limit')}",
+                flush=True,
+            )
         recorder.grab()  # final state of the action
         env.reward_manager.step(env_idx_list=[0])
         env.is_episode_end()

@@ -43,6 +43,7 @@ class RobotManager:
         self.ik_solver = dict()
         self.robot_origin_endpose = None
         self.robot_init_joint = [dict() for _ in range(self.num_envs)]
+        self.last_gripper_control = [dict() for _ in range(self.num_envs)]
         for idx, cfg in enumerate(self.robots_cfg):
             if not cfg.get("coupled", False):
                 robot = self._get_robot(cfg, idx)
@@ -200,6 +201,37 @@ class RobotManager:
             else:
                 results[env_idx] = None
         return results
+
+    def get_gripper_telemetry(self, robot, env_idx=0):
+        """Read delivered gripper targets and implicit-drive estimates for QA.
+
+        IsaacLab derives torque fields for implicit PhysX drives. They estimate
+        actuator output and are not a measured finger-to-object contact force.
+        """
+        key = self.robot_key[self.robot_list.index(robot)]
+        joint_ids = robot.gripper_joint_indices
+
+        def read(name):
+            value = getattr(key.data, name, None)
+            if value is None:
+                return None
+            return np.array(value[env_idx, joint_ids].detach().cpu(), dtype=float)
+
+        delivered = self.last_gripper_control[env_idx].get(robot.arm_name)
+        return {
+            "joint_names": list(robot.gripper_joints_name),
+            "joint_pos": read("joint_pos"),
+            "joint_vel": read("joint_vel"),
+            "joint_pos_target": read("joint_pos_target"),
+            "joint_effort_target": read("joint_effort_target"),
+            "computed_torque_estimate": read("computed_torque"),
+            "applied_torque_estimate": read("applied_torque"),
+            "joint_stiffness": read("joint_stiffness"),
+            "joint_damping": read("joint_damping"),
+            "joint_effort_limits": read("joint_effort_limits"),
+            "last_control_target": None if delivered is None else np.asarray(delivered, dtype=float),
+            "gripper_rate_limit": float(getattr(robot, "gripper_rate_limit", 0.2)),
+        }
 
     def get_delta_endpose(self, robot, env_idx_list=None):
         if env_idx_list is None:
@@ -396,6 +428,7 @@ class RobotManager:
                         device=sim.device,
                         dtype=torch.float32,
                     )
+                    self.last_gripper_control[env_idx][robot.arm_name] = gripper_position[id].detach().cpu().tolist()
 
                 env_ids = torch.tensor(plan_lst, dtype=torch.int32, device=arm_velocity.device)
                 arm.set_joint_position_target(arm_position, joint_ids=robot.arm_joint_indices, env_ids=env_ids)  # arm
@@ -426,6 +459,7 @@ class RobotManager:
             self._setup_robot_key()
         self.robot_origin_endpose = [dict() for _ in range(self.num_envs)]
         self.robot_init_joint = [dict() for _ in range(self.num_envs)]
+        self.last_gripper_control = [dict() for _ in range(self.num_envs)]
         self.set_robot_init_pose()
 
     def _load_camera_cfg(self, config: DictConfig):
@@ -538,6 +572,7 @@ class RobotManager:
         self.robot_key.clear()
         self.robot_origin_endpose = [dict() for _ in range(self.num_envs)]
         self.robot_init_joint = [dict() for _ in range(self.num_envs)]
+        self.last_gripper_control = [dict() for _ in range(self.num_envs)]
 
     def _get_SceneCfg(self, num_envs, env_spacing, replicate_physics=False):
         scene_cfg = InteractiveSceneCfg(

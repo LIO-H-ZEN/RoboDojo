@@ -147,6 +147,9 @@ gripper_move:
 gripper_bias: {PIPER_TCP_OFFSET_M}
 # joint7 range [0, 0.035]; joint8 is the mirrored finger.
 gripper_scale: [0.0, 0.035]
+# Preserve full close-side position error after contact. The control manager's
+# default 0.2 limiter remains in effect for every robot without this override.
+gripper_rate_limit: 1.0
 delta_matrix: [[1,0,0],[0,1,0],[0,0,1]]
 global_trans_matrix: [[1,0,0],[0,-1,0],[0,0,-1]] # for curobo
 dual_arm: False

@@ -197,6 +197,9 @@ class PrivilegedPickController:
         }
 
     def run(self) -> dict[str, Any]:
+        if hasattr(self.env, "gripper_telemetry_actions"):
+            self.env.gripper_telemetry_actions = []
+            self.env.last_gripper_telemetry = None
         try:
             target = self._read_target_geometry()
             self.target_name = target["instance_name"]
@@ -757,6 +760,14 @@ class PrivilegedPickController:
                 info["object_center_between_jaws"] = bool(0.0 <= proj <= axis_len)
 
         self.report["grasp_contact"] = self._json_value(info)
+        telemetry = getattr(self.env, "last_gripper_telemetry", None)
+        if telemetry is not None:
+            self.report["grip_diagnostics"] = self._json_value(
+                {
+                    "torque_semantics": "implicit-drive estimate, not measured contact force",
+                    "actions": getattr(self.env, "gripper_telemetry_actions", []),
+                }
+            )
         sep = info.get("finger_separation_m")
         residual = info.get("gripper_residual_m")
         d_center = info.get("midpoint_to_object_center_xy_m")
@@ -863,6 +874,9 @@ class PrivilegedPickController:
             self.env.end_flag[self.env_idx] = True
 
     def _record_stage(self, stage: str, **values: Any) -> None:
+        telemetry = getattr(self.env, "last_gripper_telemetry", None)
+        if telemetry is not None:
+            values["gripper_telemetry"] = telemetry
         self.report["stages"].append({"stage": stage, **self._json_value(values)})
 
     def _save_report(self) -> Path | None:
