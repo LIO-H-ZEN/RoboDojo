@@ -548,7 +548,7 @@ class GraspTraceWriter:
                     # shape: (num_sensor_bodies, num_filter_shapes, 3)
                     # sum across filter shapes to get total contact force
                     if force_matrix is not None:
-                        fm = np.asarray(force_matrix, dtype=float)
+                        fm = _contact_buffer_to_numpy(force_matrix).astype(float)
                         # fm may be (N, 3) or (1, N, 3) depending on API version
                         if fm.ndim == 3:
                             fm = fm[0]  # take first env if batched
@@ -570,7 +570,7 @@ class GraspTraceWriter:
                 try:
                     net = view.get_net_contact_forces(dt=self.physics_dt)
                     if net is not None:
-                        net_arr = np.asarray(net, dtype=float).reshape(-1, 3)
+                        net_arr = _contact_buffer_to_numpy(net).astype(float).reshape(-1, 3)
                         net_total = net_arr.sum(axis=0)
                         record[f"net_contact_force_{link_name}"] = net_total.tolist()
                         record[f"net_contact_force_{link_name}_N"] = float(np.linalg.norm(net_total))
@@ -596,6 +596,21 @@ class GraspTraceWriter:
             self._fh = None
             if self._episode_path:
                 print(f"[trace] written {self._episode_path}", flush=True)
+
+
+def _contact_buffer_to_numpy(buffer):
+    """Convert a PhysX tensor-view buffer to a NumPy array.
+
+    On GPU these buffers are warp CUDA arrays: np.asarray on them silently
+    yields zeros (no sync/transfer). IsaacLab converts via wp.to_torch
+    (contact_sensor.py) - do the same, with a plain-array fallback for CPU.
+    """
+    try:
+        import warp as wp
+
+        return wp.to_torch(buffer).detach().cpu().numpy()
+    except Exception:
+        return np.asarray(buffer, dtype=float)
 
 
 def _get_target_object(env, target_info: dict):
