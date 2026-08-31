@@ -9,7 +9,7 @@ from isaacsim.core.utils.string import find_unique_string_name
 import numpy as np
 from omegaconf import DictConfig
 import omni.usd
-from pxr import Gf, Sdf, Usd, UsdGeom
+from pxr import Gf, Sdf, Usd, UsdGeom, UsdPhysics
 import torch
 
 from env.scene_manager.layout_manager import LayoutManager
@@ -64,6 +64,23 @@ class RigidObject(SingleRigidPrim, SingleGeometryPrim):
         self.scale = scale
         self.mass = min(self.physics_config.get("mass", 0.5), 0.5)
         self.visible = self.visual_config.get("visible", True)
+        prepare_contact_sensor = self.physics_config.get("prepare_contact_sensor", False)
+        if not isinstance(prepare_contact_sensor, bool):
+            raise ValueError("prepare_contact_sensor must be a boolean")
+        collision_approximation = self.physics_config.get("collision_approximation")
+        if collision_approximation is not None:
+            if collision_approximation not in {"convexHull", "convexDecomposition"}:
+                raise ValueError(f"unsupported collision_approximation: {collision_approximation!r}")
+            collision_meshes = [
+                child
+                for child in Usd.PrimRange(prim, Usd.TraverseInstanceProxies())
+                if child.IsA(UsdGeom.Mesh) and child.HasAPI(UsdPhysics.CollisionAPI)
+            ]
+            if not collision_meshes:
+                raise RuntimeError(f"collision_approximation requested but no collision mesh exists under {prim_path}")
+            for collision_mesh in collision_meshes:
+                mesh_collision_api = UsdPhysics.MeshCollisionAPI.Apply(collision_mesh)
+                mesh_collision_api.CreateApproximationAttr().Set(collision_approximation)
 
         self.physics_material_path = find_unique_string_name(
             prim_path + "/physics_material",
@@ -84,6 +101,7 @@ class RigidObject(SingleRigidPrim, SingleGeometryPrim):
             visible=self.visible,
             collision=False,
             track_contact_forces=False,
+            prepare_contact_sensor=prepare_contact_sensor,
         )
 
         SingleRigidPrim.__init__(

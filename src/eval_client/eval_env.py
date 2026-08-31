@@ -241,6 +241,8 @@ def create_eval_env(config, app, resume_state=None, **kwargs):
             self.robot_manager.set_origin_endpose()
             self.robot_manager.set_robot_init_state()
             self.reward_manager.init_state()
+            if hasattr(self, "reset_episode_diagnostics"):
+                self.reset_episode_diagnostics(real_indices)
 
             self.model_client.call(func_name="reset")
 
@@ -367,6 +369,8 @@ def create_eval_env(config, app, resume_state=None, **kwargs):
                 action_type = self.get_action_type(action)
                 if self.take_action_cnt[env_idx] == self.step_lim or self.end_flag[env_idx]:
                     continue
+                if hasattr(self, "record_episode_actions"):
+                    self.record_episode_actions([action], [env_idx])
 
                 self.take_action_cnt[env_idx] += 1
                 print(
@@ -455,6 +459,8 @@ def create_eval_env(config, app, resume_state=None, **kwargs):
                         self._check_endpose_finite(env_idx_list)
 
             self.reward_manager.step(env_idx_list=env_idx_list)
+            if hasattr(self, "update_episode_diagnostics"):
+                self.update_episode_diagnostics(env_idx_list)
             if getattr(self, "interact", False):
                 if hasattr(self, "query_support_arm_traj"):
                     for env_idx in env_idx_list:
@@ -810,11 +816,14 @@ def create_eval_env(config, app, resume_state=None, **kwargs):
                 # layout id. Since init_eval populates seed_list as
                 # range(N_layouts), seed == layout_id by construction; use
                 # env_seeds[env_idx] directly.
-                self.eval_result["details"][index] = {
+                detail = {
                     "layout_id": int(self.env_seeds[env_idx]),
                     "success": bool(self.success[env_idx]),
                     "score": episode_score,
                 }
+                if hasattr(self, "get_episode_diagnostics"):
+                    detail["diagnostics"] = self.get_episode_diagnostics(env_idx)
+                self.eval_result["details"][index] = detail
                 video_path = os.path.join(self.save_dir, f"episode_{index:07d}.mp4")
                 self.save_video(env_idx, video_path, tag)
 

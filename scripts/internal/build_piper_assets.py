@@ -31,10 +31,33 @@ parser.add_argument(
 )
 parser.add_argument("--assets-root", type=str, default=None, help="RoboDojo Assets dir (default: <repo>/Assets)")
 parser.add_argument("--convert", action="store_true", help="also convert the URDF to piper.usd (requires Isaac Sim)")
+parser.add_argument("--gripper-static-friction", type=float)
+parser.add_argument("--gripper-dynamic-friction", type=float)
+parser.add_argument("--gripper-torsional-patch-radius", type=float)
+parser.add_argument("--gripper-min-torsional-patch-radius", type=float)
 # Extra flags (e.g. --headless) pass through to AppLauncher in the convert
 # stage; main() uses parse_known_args so they are not rejected here.
 
 CONVERT_ARGS = []
+
+
+def gripper_contact_contract(args):
+    values = {
+        "static_friction": args.gripper_static_friction,
+        "dynamic_friction": args.gripper_dynamic_friction,
+        "torsional_patch_radius": args.gripper_torsional_patch_radius,
+        "min_torsional_patch_radius": args.gripper_min_torsional_patch_radius,
+    }
+    if all(value is None for value in values.values()):
+        return None
+    if any(value is None for value in values.values()):
+        raise ValueError("all four gripper contact parameters are required")
+    for key, value in values.items():
+        if value < 0:
+            raise ValueError(f"{key} must be non-negative")
+    if values["min_torsional_patch_radius"] > values["torsional_patch_radius"]:
+        raise ValueError("minimum torsional patch radius exceeds patch radius")
+    return values
 
 
 def repo_root():
@@ -68,20 +91,30 @@ def parse_urdf(urdf_path):
 
 
 def copy_assets(piper_src, target):
-    urdf_src = os.path.join(piper_src, "urdf", "piper_description.urdf")
+    nested_urdf = os.path.join(piper_src, "urdf", "piper_description.urdf")
+    flat_urdf = os.path.join(piper_src, "piper_description.urdf")
+    urdf_src = nested_urdf if os.path.isfile(nested_urdf) else flat_urdf
     if not os.path.isfile(urdf_src):
-        raise FileNotFoundError(f"{urdf_src} not found - pass the piper_description dir as --piper-src")
+        raise FileNotFoundError(f"piper_description.urdf not found in either {nested_urdf} or {flat_urdf}")
     os.makedirs(os.path.join(target, "meshes"), exist_ok=True)
 
     src = open(urdf_src, encoding="utf-8").read()
     src = src.replace("package://piper_description/meshes/", "meshes/")
+    # Isaac derives USD prim names from mesh basenames. A second dot in names
+    # such as `base_link.convex.stl` produces an invalid prim path, so rewrite
+    # the deterministic convex suffix in both the URDF and copied files.
+    src = src.replace(".convex.stl", "_convex.stl")
     urdf_dst = os.path.join(target, "piper.urdf")
     open(urdf_dst, "w", encoding="utf-8").write(src)
 
     copied = 0
     for name in os.listdir(os.path.join(piper_src, "meshes")):
         if name.lower().endswith(".stl"):
-            shutil.copy2(os.path.join(piper_src, "meshes", name), os.path.join(target, "meshes", name))
+            target_name = name.replace(".convex.stl", "_convex.stl")
+            shutil.copy2(
+                os.path.join(piper_src, "meshes", name),
+                os.path.join(target, "meshes", target_name),
+            )
             copied += 1
     print(f"[piper] urdf -> {urdf_dst} ({copied} STL meshes copied)")
     return urdf_dst
@@ -190,7 +223,62 @@ planner:
     print(f"[piper] wrote {path}")
 
 
-def convert_urdf_to_usd(urdf_path, usd_path):
+def author_gripper_contact_properties(usd_path, contract):
+    if contract is None:
+        return
+    from pxr import PhysxSchema, Usd, UsdPhysics, UsdShade
+
+    stage = Usd.Stage.Open(usd_path)
+    if not stage:
+        raise RuntimeError(f"failed to open Piper composed USD: {usd_path}")
+    default_prim = stage.GetDefaultPrim()
+    if not default_prim:
+        raise RuntimeError(f"Piper composed USD has no default prim: {usd_path}")
+    material = UsdShade.Material.Define(stage, default_prim.GetPath().AppendChild("gripper_physics_material"))
+    material_api = UsdPhysics.MaterialAPI.Apply(material.GetPrim())
+    material_api.CreateStaticFrictionAttr().Set(contract["static_friction"])
+    material_api.CreateDynamicFrictionAttr().Set(contract["dynamic_friction"])
+    material_api.CreateRestitutionAttr().Set(0.0)
+    physx_material_api = PhysxSchema.PhysxMaterialAPI.Apply(material.GetPrim())
+    physx_material_api.CreateFrictionCombineModeAttr().Set("average")
+    physx_material_api.CreateRestitutionCombineModeAttr().Set("average")
+
+    for link_name in ("link7", "link8"):
+        matches = [
+            prim
+            for prim in Usd.PrimRange(default_prim, Usd.TraverseInstanceProxies())
+            if link_name in {part for part in str(prim.GetPath()).split("/") if part}
+            and prim.HasAPI(UsdPhysics.CollisionAPI)
+        ]
+        if len(matches) != 1:
+            raise RuntimeError(f"expected one {link_name} collider in {usd_path}, got {len(matches)}")
+        collider = matches[0]
+        collider_path = collider.GetPath()
+        if collider.IsInstanceProxy():
+            instance_root = collider.GetParent()
+            while instance_root.IsInstanceProxy():
+                instance_root = instance_root.GetParent()
+            if not instance_root.IsInstance():
+                raise RuntimeError(f"{link_name} collider proxy has no instance root")
+            instance_root.SetInstanceable(False)
+            collider = stage.GetPrimAtPath(collider_path)
+        if not collider or not collider.IsValid() or collider.IsInstanceProxy():
+            raise RuntimeError(f"failed to author {link_name} collider at {collider_path}")
+        physx_collision_api = PhysxSchema.PhysxCollisionAPI(collider)
+        if not physx_collision_api:
+            physx_collision_api = PhysxSchema.PhysxCollisionAPI.Apply(collider)
+        physx_collision_api.CreateTorsionalPatchRadiusAttr().Set(contract["torsional_patch_radius"])
+        physx_collision_api.CreateMinTorsionalPatchRadiusAttr().Set(contract["min_torsional_patch_radius"])
+        UsdShade.MaterialBindingAPI.Apply(collider).Bind(
+            material,
+            bindingStrength=UsdShade.Tokens.strongerThanDescendants,
+            materialPurpose="physics",
+        )
+    stage.GetRootLayer().Save()
+    print(f"[piper] authored gripper contact contract in {usd_path}: {contract}")
+
+
+def convert_urdf_to_usd(urdf_path, usd_path, contact_contract=None):
     from isaaclab.app import AppLauncher
 
     convert_parser = argparse.ArgumentParser()
@@ -216,7 +304,10 @@ def convert_urdf_to_usd(urdf_path, usd_path):
         "create_joint_drives": True,
         "import_inertia_tensor": True,
         "import_mass": True,
-        "inertia_from_visuals": True,
+        # Preserve the authored URDF mass/inertia contract. Recomputing from
+        # visual meshes changes link masses by multiples and breaks replay
+        # dynamics across simulators even when kinematics are identical.
+        "inertia_from_visuals": False,
         "make_default_prim": True,
         "density": 1000.0,
     }
@@ -240,7 +331,8 @@ def convert_urdf_to_usd(urdf_path, usd_path):
     if os.path.isfile(usd_path):
         print(f"[piper] SUCCESS: {usd_path} ({os.path.getsize(usd_path)} bytes)")
     else:
-        print(f"[piper] FAILED: {usd_path} was not created")
+        raise RuntimeError(f"Piper USD was not created: {usd_path}")
+    author_gripper_contact_properties(usd_path, contact_contract)
     app.close()
 
 
@@ -256,7 +348,11 @@ def main():
     write_curobo_config(target, joints)
 
     if args.convert:
-        convert_urdf_to_usd(urdf_path, os.path.join(target, "piper.usd"))
+        convert_urdf_to_usd(
+            urdf_path,
+            os.path.join(target, "piper.usd"),
+            contact_contract=gripper_contact_contract(args),
+        )
     else:
         print(f"[piper] files ready in {target}; run with --convert (server, robodojo env) to build piper.usd")
     return 0

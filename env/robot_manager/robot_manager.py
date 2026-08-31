@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from importlib import import_module
 from typing import List, Literal
@@ -627,6 +627,43 @@ class RobotManager:
                     )
                 )
             )
+        if cfg is not None and "disable_gravity" in cfg:
+            disable_gravity = cfg["disable_gravity"]
+            if not isinstance(disable_gravity, bool):
+                raise ValueError("disable_gravity must be a boolean")
+            scene_cfg = scene_cfg.replace(
+                spawn=scene_cfg.spawn.replace(
+                    rigid_props=scene_cfg.spawn.rigid_props.replace(disable_gravity=disable_gravity)
+                )
+            )
+        if cfg is not None and "activate_contact_sensors" in cfg:
+            activate_contact_sensors = cfg["activate_contact_sensors"]
+            if not isinstance(activate_contact_sensors, bool):
+                raise ValueError("activate_contact_sensors must be a boolean")
+            scene_cfg = scene_cfg.replace(
+                spawn=scene_cfg.spawn.replace(activate_contact_sensors=activate_contact_sensors)
+            )
+        if cfg is not None and "usd_path" in cfg:
+            usd_path = cfg["usd_path"]
+            if not isinstance(usd_path, str) or not usd_path:
+                raise ValueError("usd_path must be a non-empty string")
+            scene_cfg = scene_cfg.replace(spawn=scene_cfg.spawn.replace(usd_path=usd_path))
+        for actuator_name in ("arm", "gripper"):
+            override_key = f"{actuator_name}_actuator_overrides"
+            if cfg is None or override_key not in cfg:
+                continue
+            actuator_overrides = cfg[override_key]
+            if not isinstance(actuator_overrides, Mapping) or not actuator_overrides:
+                raise ValueError(f"{override_key} must be a non-empty mapping")
+            supported = {"stiffness", "damping", "effort_limit_sim", "armature"}
+            unsupported = sorted(set(actuator_overrides).difference(supported))
+            if unsupported:
+                raise ValueError(f"unsupported {actuator_name} actuator overrides: {unsupported}")
+            if actuator_name not in scene_cfg.actuators:
+                raise ValueError(f"robot {robot_name!r} has no {actuator_name} actuator")
+            actuators = dict(scene_cfg.actuators)
+            actuators[actuator_name] = actuators[actuator_name].replace(**dict(actuator_overrides))
+            scene_cfg = scene_cfg.replace(actuators=actuators)
 
         scene_cfg = scene_cfg.replace(
             prim_path=f"{ENV_REGEX_NAMESPACE}/robot{idx}",

@@ -8,5 +8,5 @@
 	branch = main
 [submodule "XPolicyLab"]
 	path = XPolicyLab
-	url = https://github.com/XPolicyLab/XPolicyLab.git
-	branch = main
+	url = https://github.com/Gabrielinger/XPolicyLab.git
+	branch = feature/pi05-piper-general-pickup-native-20260831
