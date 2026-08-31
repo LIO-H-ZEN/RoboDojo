@@ -212,11 +212,7 @@ def export_object(
     if not isinstance(position, list) or not isinstance(orientation, list):
         raise ValueError(f"object {category} has no complete default pose")
     description_path = asset_dir / "description.json"
-    descriptions = (
-        read_descriptions(asset_dir)
-        if require_descriptions or description_path.is_file()
-        else []
-    )
+    descriptions = read_descriptions(asset_dir) if require_descriptions or description_path.is_file() else []
     return {
         "object_type": object_type,
         "asset_type": "Clutter" if instance.get("type") == "cluttered" else object_type,
@@ -252,8 +248,7 @@ def load_static_contract(
     robot_config_path = piper_dir / "robot_config.yml"
     configs["piper_asset"] = load_yaml(robot_config_path)
     source_files = [
-        {"path": path.relative_to(repo_root).as_posix(), "sha256": sha256_file(path)}
-        for path in config_paths.values()
+        {"path": path.relative_to(repo_root).as_posix(), "sha256": sha256_file(path)} for path in config_paths.values()
     ]
     source_files.append(
         {
@@ -358,9 +353,7 @@ def write_contracts(
 ) -> dict[str, Any]:
     repo_root = repo_root.resolve()
     assets_root = assets_root.resolve()
-    piper_assets_root = (
-        assets_root if piper_assets_root is None else piper_assets_root.resolve()
-    )
+    piper_assets_root = assets_root if piper_assets_root is None else piper_assets_root.resolve()
     output_dir = output_dir.resolve()
     selected = filtered_layouts(assets_root, seed)
     invalid = [layout_id for layout_id in layout_ids if layout_id < 0 or layout_id >= len(selected)]
