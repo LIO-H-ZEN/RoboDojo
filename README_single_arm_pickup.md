@@ -125,6 +125,29 @@ down — the exact symptom of the first piper bring-up run.
 - **Video** bypasses `TiledCaptureManager` (a warp kernel hang observed in
   some containers) and uses cpu replicator annotators instead.
 
+## Cross-simulator direct-replay examples
+
+The examples below replay the same successful ManiSkill joint-action trajectory
+in RoboDojo without RoboDojo-specific training. The top row is ManiSkill and the
+bottom row is RoboDojo; columns show the base/head, wrist, and side cameras.
+These are direct-action simulator replays used to validate task and dynamics
+alignment, not PI-0.5 policy closed-loop evaluations in RoboDojo.
+
+<p align="center">
+  <strong>White toy car</strong><br>
+  <img src="docs/media/general_pickup/white_toy_car_maniskill_robodojo.gif" width="90%" alt="White toy car ManiSkill and RoboDojo two-row three-camera replay">
+</p>
+
+<p align="center">
+  <strong>Wooden owl</strong><br>
+  <img src="docs/media/general_pickup/wooden_owl_maniskill_robodojo.gif" width="90%" alt="Wooden owl ManiSkill and RoboDojo two-row three-camera replay">
+</p>
+
+<p align="center">
+  <strong>Smart remote</strong><br>
+  <img src="docs/media/general_pickup/smart_remote_maniskill_robodojo.gif" width="90%" alt="Smart remote ManiSkill and RoboDojo two-row three-camera replay">
+</p>
+
 ## Policy evaluation (once a policy exists)
 
 ```bash
