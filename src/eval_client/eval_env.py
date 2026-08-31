@@ -628,7 +628,7 @@ def create_eval_env(config, app, resume_state=None, **kwargs):
                     continue
                 value = action_dict[key]
 
-                if not isinstance(value, (np.ndarray, list, tuple)):
+                if not isinstance(value, np.ndarray | list | tuple):
                     raise TypeError(f"action_dict['{key}'] must be array-like, got {type(value)}")
 
                 arr = np.asarray(value)
