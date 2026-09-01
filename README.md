@@ -1,3 +1,7 @@
+> **Fork 扩展**：本分支在 RoboDojo 上游基础上，为 `general_pickup` 任务新增了 **36 种提示词模式** 的提示词生成系统，详见 [`README_general_pickup.md`](README_general_pickup.md) 和 [`docs/general_pickup_comprehensive.md`](docs/general_pickup_comprehensive.md)。
+
+---
+
 <div align="center">
 
 <img src="https://media.luminis-sim.com/media/challenge/posters/robodojo_logo.png"></img>
@@ -52,8 +56,23 @@ task/RoboDojo/         task logic and task YAML configs
 scripts/robodojo.sh    public RoboDojo-side eval entry
 scripts/eval_policy.sh simulator client launched by XPolicyLab eval.sh
 XPolicyLab/            policy server and policy integrations
-Assets/                downloaded robot, object, material, and layout assets
+docs/                  documentation (comprehensive guide, frames)
+scripts/internal/      internal utilities (attribute extraction, review UI, layout generation)
 ```
+
+### 本分支新增文件
+
+| 路径 | 说明 |
+|------|------|
+| `task/RoboDojo/tasks/prompt_engine.py` | 提示词引擎 — 36 种模式（颜色/形状/空间/组合） |
+| `task/RoboDojo/config/object_attributes.json` | 物体属性标注（颜色/形状） |
+| `docs/general_pickup_comprehensive.md` | 综合文档（提示词+空间逻辑+桌面系统+材质） |
+| `docs/frames/` | 36 种提示词模式的场景截图 |
+| `scripts/internal/extract_object_attributes.py` | 从 caption 自动提取物体属性 |
+| `scripts/internal/generate_review_html.py` | 生成属性审查 HTML 页面 |
+| `scripts/internal/review_attributes_ui.py` | 属性审查 UI |
+| `scripts/internal/object_attributes.json` | 提取的物体属性缓存 |
+| `scripts/internal/object_attributes_review.html` | 审查页面 |
 
 ## 🔌 Policy Integration
 
@@ -77,61 +96,3 @@ View live rankings on the [RoboDojo Leaderboard](https://robodojo-benchmark.com/
 ## 📝 Citation
 
 **RoboDojo**
-
-```bibtex
-@article{chen2026robodojo,
-  title={{RoboDojo}: A Unified Sim-and-Real Benchmark for Comprehensive Evaluation of Generalist Robot Manipulation Policies},
-  author={Chen, Tianxing and Chen, Yue and Li, Zixuan and Tang, Junyuan and Su, Kailun and Wan, Weijie and Chen, Baijun and Lu, Haoran and Yan, Haowen and Su, Honghao and others},
-  journal={arXiv preprint arXiv:2607.04434},
-  year={2026}
-}
-```
-
-**RoboTwin 2.0**
-
-```bibtex
-@article{chen2025robotwin,
-  title={Robotwin 2.0: A scalable data generator and benchmark with strong domain randomization for robust bimanual robotic manipulation},
-  author={Chen, Tianxing and Chen, Zanxin and Chen, Baijun and Cai, Zijian and Liu, Yibin and Li, Zixuan and Liang, Qiwei and Lin, Xianliang and Ge, Yiheng and Gu, Zhenyu and others},
-  journal={arXiv preprint arXiv:2506.18088},
-  year={2025}
-}
-```
-
-**MagicSim**
-
-```bibtex
-@misc{lu2026magicsimunifiedinfrastructureexecutable,
-      title={MagicSim: A Unified Infrastructure for Executable Embodied Interaction}, 
-      author={Haoran Lu and Songling Liu and Yue Chen and Guo Ye and Mutian Shen and Shuyang Yu and Yu Xiao and Jihai Zhao and Shang Wu and Jianshu Zhang and Xiangtian Gui and Chuye Hong and Yuran Wang and Maojiang Su and Jiayi Wang and Ruihai Wu and Zhaoran Wang and Han Liu},
-      year={2026},
-      eprint={2606.17511},
-      archivePrefix={arXiv},
-      primaryClass={cs.RO},
-      url={https://arxiv.org/abs/2606.17511}, 
-}
-```
-
-## 🙏 Acknowledgements
-
-RoboDojo builds on [Isaac Sim](https://developer.nvidia.com/isaac/sim), [IsaacLab](https://github.com/isaac-sim/IsaacLab), [IsaacLab-Arena](https://github.com/isaac-sim/IsaacLab-Arena), [RoboTwin 2.0](https://github.com/robotwin-Platform/robotwin), [XPolicyLab](https://github.com/XPolicyLab/XPolicyLab), and [MagicSim](https://arxiv.org/abs/2606.17511). We thank the authors and maintainers for their open-source contributions to the robotics community.
-
-Contact [Tianxing Chen](https://tianxingchen.github.io/) or [Yue Chen](https://yuechen0614.github.io/) if you have questions or suggestions.
-
-## 🏫 Affiliations
-
-RoboDojo is operated by **AI MMLab Club**, a non-profit, vendor-neutral organization, and is jointly maintained and supported by a global consortium of academic institutional partners. To preserve the fairness, neutrality, and independence of the official evaluation, RoboDojo does not involve commercial companies in its governance, operation, funding, sponsorship, compute, hardware, or other forms of project support. For inquiries from academic or non-profit partners regarding project collaboration or resource support, please contact [RoboDojoCommittee@gmail.com](mailto:RoboDojoCommittee@gmail.com).
-
-<img src="https://media.luminis-sim.com/media/home/partners/affiliations.png"></img>
-
-## ⚖️ License
-
-Released under the [RoboDojo Non-Commercial Research License](LICENSE). RoboDojo is available for non-commercial research, education, and evaluation only. Commercial use requires prior written permission from the maintainers.
-
-
-<p align="center">
-  <img alt="Python 3.11" src="https://img.shields.io/badge/Python-3.11-475569?style=flat-square&logo=python&logoColor=white&labelColor=64748b" height="22"/>&nbsp;
-  <img alt="Isaac Sim 5.1" src="https://img.shields.io/badge/Isaac_Sim-5.1-475569?style=flat-square&logo=nvidia&logoColor=76B900&labelColor=64748b" height="22"/>&nbsp;
-  <img alt="Isaac Lab 2.3" src="https://img.shields.io/badge/Isaac_Lab-2.3-475569?style=flat-square&logo=nvidia&logoColor=76B900&labelColor=64748b" height="22"/>&nbsp;
-  <img alt="License Non-Commercial" src="https://img.shields.io/badge/License-Non--Commercial-475569?style=flat-square&labelColor=64748b" height="22"/>
-</p>
