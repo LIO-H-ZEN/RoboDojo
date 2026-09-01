@@ -1,0 +1,1022 @@
+{
+  "action_camera": {
+    "color": "black",
+    "shape": "rectangular",
+    "common_name": "action camera"
+  },
+  "alarm": {
+    "color": "beige",
+    "shape": "rectangular",
+    "common_name": "alarm clock"
+  },
+  "b": {
+    "color": "gray",
+    "shape": "letter-shaped",
+    "common_name": "letter B block"
+  },
+  "bag": {
+    "color": "black",
+    "shape": "trapezoid",
+    "common_name": "bag"
+  },
+  "basket_grasp": {
+    "color": "blue",
+    "shape": "rectangular",
+    "common_name": "basket"
+  },
+  "bell": {
+    "color": "yellow",
+    "shape": "bell-shaped",
+    "common_name": "hand bell"
+  },
+  "bicycle": {
+    "color": "white",
+    "shape": "bicycle-shaped",
+    "common_name": "toy bicycle"
+  },
+  "binoculars": {
+    "color": "green",
+    "shape": "rectangular",
+    "common_name": "binoculars"
+  },
+  "block": {
+    "color": "black",
+    "shape": "round",
+    "common_name": "building block"
+  },
+  "bottle": {
+    "color": "gray",
+    "shape": "cylindrical",
+    "common_name": "bottle"
+  },
+  "bottle_opener": {
+    "color": "gray",
+    "shape": "L-shaped",
+    "common_name": "bottle opener"
+  },
+  "bowl": {
+    "color": "black",
+    "shape": "round",
+    "common_name": "bowl"
+  },
+  "box": {
+    "color": "gray",
+    "shape": "rectangular",
+    "common_name": "box"
+  },
+  "bread": {
+    "color": "brown",
+    "shape": "rectangular",
+    "common_name": "bread loaf"
+  },
+  "brick": {
+    "color": "red",
+    "shape": "cube",
+    "common_name": "brick"
+  },
+  "broom": {
+    "color": "green",
+    "shape": "cylindrical",
+    "common_name": "broom"
+  },
+  "broom_shovel": {
+    "color": "yellow",
+    "shape": "bowl",
+    "common_name": "broom and shovel set"
+  },
+  "cactus": {
+    "color": "green",
+    "shape": "cylindrical",
+    "common_name": "cactus plant"
+  },
+  "camera": {
+    "color": "black",
+    "shape": "rectangular",
+    "common_name": "camera"
+  },
+  "can": {
+    "color": "silver",
+    "shape": "cylindrical",
+    "common_name": "spray can"
+  },
+  "car": {
+    "color": "blue",
+    "shape": "slim",
+    "common_name": "toy car"
+  },
+  "cassette": {
+    "color": "black",
+    "shape": "rectangular",
+    "common_name": "cassette tape"
+  },
+  "charger": {
+    "color": "gray",
+    "shape": "rectangular",
+    "common_name": "charger"
+  },
+  "chessman": {
+    "color": "green",
+    "shape": "donut-shaped",
+    "common_name": "chess piece"
+  },
+  "chick": {
+    "color": "white",
+    "shape": "bird-shaped",
+    "common_name": "ceramic dove"
+  },
+  "chocolate_bag": {
+    "color": "brown",
+    "shape": "rectangular",
+    "common_name": "cookie bag"
+  },
+  "chocolate_bar": {
+    "color": "brown",
+    "shape": "rectangular",
+    "common_name": "chocolate bar"
+  },
+  "clock": {
+    "color": "green",
+    "shape": "round",
+    "common_name": "alarm clock"
+  },
+  "coin": {
+    "color": "black",
+    "shape": "rectangular",
+    "common_name": "coin"
+  },
+  "corkscrew": {
+    "color": "white",
+    "shape": "irregular",
+    "common_name": "corkscrew"
+  },
+  "correction_tape": {
+    "color": "white",
+    "shape": "rectangular",
+    "common_name": "correction tape"
+  },
+  "cube": {
+    "color": "gray",
+    "shape": "cube",
+    "common_name": "cube"
+  },
+  "cup": {
+    "color": "yellow",
+    "shape": "cylindrical",
+    "common_name": "cup"
+  },
+  "d": {
+    "color": "gray",
+    "shape": "oval",
+    "common_name": "letter D block"
+  },
+  "division": {
+    "color": "black",
+    "shape": "cylindrical",
+    "common_name": "division sign block"
+  },
+  "donut": {
+    "color": "brown",
+    "shape": "donut-shaped",
+    "common_name": "donut"
+  },
+  "drawing_compass": {
+    "color": "gray",
+    "shape": "irregular",
+    "common_name": "drafting compass"
+  },
+  "earbuds": {
+    "color": "black",
+    "shape": "teardrop",
+    "common_name": "earbuds"
+  },
+  "egg": {
+    "color": "white",
+    "shape": "oval",
+    "common_name": "egg"
+  },
+  "electric_toothbrush": {
+    "color": "gray",
+    "shape": "cylindrical",
+    "common_name": "electric toothbrush"
+  },
+  "equal": {
+    "color": "gray",
+    "shape": "cylindrical",
+    "common_name": "equal sign block"
+  },
+  "factory_nut": {
+    "color": "gray",
+    "shape": "hexagonal",
+    "common_name": "factory nut"
+  },
+  "figurine": {
+    "color": "beige",
+    "shape": "figurine",
+    "common_name": "figurine"
+  },
+  "frame": {
+    "color": "brown",
+    "shape": "triangular",
+    "common_name": "A-frame sign"
+  },
+  "game_machine": {
+    "color": "green",
+    "shape": "round",
+    "common_name": "game machine"
+  },
+  "garage": {
+    "color": "gray",
+    "shape": "rectangular",
+    "common_name": "toy garage"
+  },
+  "glasses": {
+    "color": "blue",
+    "shape": "irregular",
+    "common_name": "sunglasses"
+  },
+  "glue": {
+    "color": "blue",
+    "shape": "cylindrical",
+    "common_name": "glue stick"
+  },
+  "glue_gun": {
+    "color": "teal",
+    "shape": "irregular",
+    "common_name": "glue gun"
+  },
+  "goblet": {
+    "color": "gold",
+    "shape": "cup-shaped",
+    "common_name": "goblet"
+  },
+  "grapes": {
+    "color": "purple",
+    "shape": "round",
+    "common_name": "grapes"
+  },
+  "hammer": {
+    "color": "gray",
+    "shape": "rectangular",
+    "common_name": "hammer"
+  },
+  "handled_paint": {
+    "color": "brown",
+    "shape": "cylindrical",
+    "common_name": "brayer roller"
+  },
+  "headphone": {
+    "color": "brown",
+    "shape": "curved",
+    "common_name": "headphones"
+  },
+  "headset": {
+    "color": "black",
+    "shape": "curved",
+    "common_name": "headset"
+  },
+  "helicopter": {
+    "color": "blue",
+    "shape": "irregular",
+    "common_name": "toy helicopter"
+  },
+  "hoe": {
+    "color": "yellow",
+    "shape": "pointed",
+    "common_name": "ice axe"
+  },
+  "ice_cream": {
+    "color": "gray",
+    "shape": "cylindrical",
+    "common_name": "ice cream"
+  },
+  "j": {
+    "color": "gray",
+    "shape": "L-shaped",
+    "common_name": "letter J block"
+  },
+  "jewelry_box": {
+    "color": "green",
+    "shape": "rectangular",
+    "common_name": "woven box"
+  },
+  "juice_carton": {
+    "color": "green",
+    "shape": "rectangular",
+    "common_name": "juice carton"
+  },
+  "key": {
+    "color": "silver",
+    "shape": "irregular",
+    "common_name": "key"
+  },
+  "keyboard": {
+    "color": "black",
+    "shape": "rectangular",
+    "common_name": "keyboard"
+  },
+  "kiwi": {
+    "color": "green",
+    "shape": "round",
+    "common_name": "kiwi slice"
+  },
+  "lighter": {
+    "color": "blue",
+    "shape": "rectangular",
+    "common_name": "lighter"
+  },
+  "mahjong": {
+    "color": "white",
+    "shape": "rectangular",
+    "common_name": "mahjong tile"
+  },
+  "mallet": {
+    "color": "brown",
+    "shape": "cylindrical",
+    "common_name": "mallet"
+  },
+  "mallet_stand": {
+    "color": "black",
+    "shape": "curved",
+    "common_name": "mallet stand"
+  },
+  "matryoshka_dolls": {
+    "color": "red",
+    "shape": "cylindrical",
+    "common_name": "matryoshka doll"
+  },
+  "minus": {
+    "color": "black",
+    "shape": "cylindrical",
+    "common_name": "minus sign block"
+  },
+  "mouse": {
+    "color": "black",
+    "shape": "teardrop",
+    "common_name": "computer mouse"
+  },
+  "mug": {
+    "color": "black",
+    "shape": "cylindrical",
+    "common_name": "mug"
+  },
+  "multiplication": {
+    "color": "gray",
+    "shape": "cylindrical",
+    "common_name": "multiplication sign block"
+  },
+  "music_player": {
+    "color": "silver",
+    "shape": "rectangular",
+    "common_name": "music player"
+  },
+  "nail_clippers": {
+    "color": "gray",
+    "shape": "irregular",
+    "common_name": "nail clippers"
+  },
+  "noodles": {
+    "color": "white",
+    "shape": "cup-shaped",
+    "common_name": "noodle cup"
+  },
+  "number": {
+    "color": "white",
+    "shape": "rectangular",
+    "common_name": "number block"
+  },
+  "o": {
+    "color": "gray",
+    "shape": "donut-shaped",
+    "common_name": "letter O block"
+  },
+  "oil_pen": {
+    "color": "purple",
+    "shape": "tapered rectangle",
+    "common_name": "oil pen"
+  },
+  "origami_crane": {
+    "color": "white",
+    "shape": "origami",
+    "common_name": "origami crane"
+  },
+  "owl": {
+    "color": "brown",
+    "shape": "figurine",
+    "common_name": "owl figurine"
+  },
+  "paint_roller": {
+    "color": "yellow",
+    "shape": "cylindrical",
+    "common_name": "paint roller"
+  },
+  "paper_ball": {
+    "color": "brown",
+    "shape": "round",
+    "common_name": "paper ball"
+  },
+  "peeler": {
+    "color": "white",
+    "shape": "irregular",
+    "common_name": "vegetable peeler"
+  },
+  "pen": {
+    "color": "black",
+    "shape": "cylindrical",
+    "common_name": "pen"
+  },
+  "pen_holder": {
+    "color": "black",
+    "shape": "cylindrical",
+    "common_name": "pen holder"
+  },
+  "pepper": {
+    "color": "red",
+    "shape": "irregular",
+    "common_name": "bell pepper"
+  },
+  "phone": {
+    "color": "black",
+    "shape": "rectangular",
+    "common_name": "phone"
+  },
+  "piler": {
+    "color": "green",
+    "shape": "irregular",
+    "common_name": "wire crimper"
+  },
+  "plane": {
+    "color": "white",
+    "shape": "irregular",
+    "common_name": "toy airplane"
+  },
+  "plate": {
+    "color": "gray",
+    "shape": "round",
+    "common_name": "plate"
+  },
+  "pliers": {
+    "color": "gray",
+    "shape": "irregular",
+    "common_name": "pliers"
+  },
+  "plus": {
+    "color": "black",
+    "shape": "cylindrical",
+    "common_name": "plus sign block"
+  },
+  "pot": {
+    "color": "white",
+    "shape": "cylindrical",
+    "common_name": "saucepan"
+  },
+  "power_bank": {
+    "color": "black",
+    "shape": "rectangular",
+    "common_name": "power bank"
+  },
+  "prayer_bead": {
+    "color": "multicolor",
+    "shape": "beaded",
+    "common_name": "bead bracelet"
+  },
+  "puppet": {
+    "color": "green",
+    "shape": "irregular",
+    "common_name": "puppet"
+  },
+  "r": {
+    "color": "gray",
+    "shape": "letter-shaped",
+    "common_name": "letter R block"
+  },
+  "remote": {
+    "color": "black",
+    "shape": "rectangular",
+    "common_name": "remote control"
+  },
+  "sachet": {
+    "color": "white",
+    "shape": "pouch",
+    "common_name": "drawstring pouch"
+  },
+  "saw": {
+    "color": "brown",
+    "shape": "irregular",
+    "common_name": "hacksaw"
+  },
+  "scan": {
+    "color": "black",
+    "shape": "rectangular",
+    "common_name": "barcode scanner"
+  },
+  "scissor": {
+    "color": "green",
+    "shape": "irregular",
+    "common_name": "scissors"
+  },
+  "seashell": {
+    "color": "white",
+    "shape": "spiral",
+    "common_name": "conch shell"
+  },
+  "shoe": {
+    "color": "black",
+    "shape": "shoe",
+    "common_name": "shoe"
+  },
+  "shovel": {
+    "color": "purple",
+    "shape": "irregular",
+    "common_name": "toy shovel"
+  },
+  "sickle": {
+    "color": "gray",
+    "shape": "curved",
+    "common_name": "sickle"
+  },
+  "small_cube": {
+    "color": "purple",
+    "shape": "cube",
+    "common_name": "small cube"
+  },
+  "socket": {
+    "color": "white",
+    "shape": "rectangular",
+    "common_name": "socket"
+  },
+  "speaker": {
+    "color": "black",
+    "shape": "rectangular",
+    "common_name": "portable speaker"
+  },
+  "sphere": {
+    "color": "gray",
+    "shape": "round",
+    "common_name": "sphere"
+  },
+  "stackingblocks": {
+    "color": "multicolor",
+    "shape": "rectangular",
+    "common_name": "stacking blocks"
+  },
+  "stapler": {
+    "color": "blue",
+    "shape": "irregular",
+    "common_name": "stapler"
+  },
+  "t": {
+    "color": "red",
+    "shape": "L-shaped",
+    "common_name": "letter T block"
+  },
+  "tape_dispense": {
+    "color": "gray",
+    "shape": "irregular",
+    "common_name": "tape dispenser"
+  },
+  "tape_measure": {
+    "color": "yellow",
+    "shape": "rectangular",
+    "common_name": "tape measure"
+  },
+  "tape_roll": {
+    "color": "white",
+    "shape": "cylindrical",
+    "common_name": "packing tape"
+  },
+  "teddy_bear": {
+    "color": "white",
+    "shape": "figurine",
+    "common_name": "teddy bear"
+  },
+  "test_tube": {
+    "color": "white",
+    "shape": "cylindrical",
+    "common_name": "test tube"
+  },
+  "thread": {
+    "color": "white",
+    "shape": "cylindrical",
+    "common_name": "thread spool"
+  },
+  "tiara": {
+    "color": "gold",
+    "shape": "crown-shaped",
+    "common_name": "tiara"
+  },
+  "toy": {
+    "color": "multicolor",
+    "shape": "figurine",
+    "common_name": "bunny doll"
+  },
+  "toy_car": {
+    "color": "yellow",
+    "shape": "rectangular",
+    "common_name": "toy car"
+  },
+  "triangular_prism": {
+    "color": "black",
+    "shape": "triangular",
+    "common_name": "triangular prism"
+  },
+  "trophy": {
+    "color": "yellow",
+    "shape": "cup-shaped",
+    "common_name": "trophy"
+  },
+  "usb_multip": {
+    "color": "black",
+    "shape": "rectangular",
+    "common_name": "USB hub"
+  },
+  "waffle": {
+    "color": "yellow",
+    "shape": "round",
+    "common_name": "waffle cookie"
+  },
+  "watch": {
+    "color": "gray",
+    "shape": "round",
+    "common_name": "watch"
+  },
+  "watering_can": {
+    "color": "white",
+    "shape": "irregular",
+    "common_name": "watering can"
+  },
+  "whisk": {
+    "color": "silver",
+    "shape": "irregular",
+    "common_name": "whisk"
+  },
+  "wine_bottle": {
+    "color": "green",
+    "shape": "bottle-shaped",
+    "common_name": "wine bottle"
+  },
+  "wine_bowl": {
+    "color": "black",
+    "shape": "bowl",
+    "common_name": "wine bowl"
+  },
+  "wooden_toy": {
+    "color": "brown",
+    "shape": "figurine",
+    "common_name": "wooden toy"
+  },
+  "wrench": {
+    "color": "gray",
+    "shape": "irregular",
+    "common_name": "wrench"
+  },
+  "wuliangye": {
+    "color": "white",
+    "shape": "bottle-shaped",
+    "common_name": "wuliangye bottle"
+  },
+  "yogurt": {
+    "color": "white",
+    "shape": "cup-shaped",
+    "common_name": "yogurt cup"
+  },
+  "mini_fan": {
+    "color": "unknown",
+    "shape": "irregular",
+    "common_name": "mini fan"
+  },
+  "piano": {
+    "color": "unknown",
+    "shape": "rectangular",
+    "common_name": "piano"
+  },
+  "cutter": {
+    "color": "unknown",
+    "shape": "irregular",
+    "common_name": "cutter"
+  },
+  "jeans": {
+    "color": "blue",
+    "shape": "irregular",
+    "common_name": "jeans"
+  },
+  "ball": {
+    "color": "unknown",
+    "shape": "round",
+    "common_name": "ball"
+  },
+  "racket": {
+    "color": "unknown",
+    "shape": "irregular",
+    "common_name": "racket"
+  },
+  "audio": {
+    "color": "unknown",
+    "shape": "rectangular",
+    "common_name": "audio device"
+  },
+  "balance": {
+    "color": "unknown",
+    "shape": "irregular",
+    "common_name": "balance"
+  },
+  "baseball_bat": {
+    "color": "brown",
+    "shape": "cylindrical",
+    "common_name": "baseball bat"
+  },
+  "body_lotion": {
+    "color": "white",
+    "shape": "cylindrical",
+    "common_name": "body lotion"
+  },
+  "book_shelf": {
+    "color": "brown",
+    "shape": "rectangular",
+    "common_name": "bookshelf"
+  },
+  "bridge": {
+    "color": "gray",
+    "shape": "irregular",
+    "common_name": "bridge"
+  },
+  "cake": {
+    "color": "white",
+    "shape": "round",
+    "common_name": "cake"
+  },
+  "calculator": {
+    "color": "black",
+    "shape": "rectangular",
+    "common_name": "calculator"
+  },
+  "calendar": {
+    "color": "white",
+    "shape": "rectangular",
+    "common_name": "calendar"
+  },
+  "candle": {
+    "color": "white",
+    "shape": "cylindrical",
+    "common_name": "candle"
+  },
+  "cap": {
+    "color": "unknown",
+    "shape": "irregular",
+    "common_name": "cap"
+  },
+  "card": {
+    "color": "white",
+    "shape": "rectangular",
+    "common_name": "card"
+  },
+  "cereal": {
+    "color": "unknown",
+    "shape": "rectangular",
+    "common_name": "cereal box"
+  },
+  "chinese_pavillion": {
+    "color": "unknown",
+    "shape": "irregular",
+    "common_name": "pavilion"
+  },
+  "clip": {
+    "color": "silver",
+    "shape": "irregular",
+    "common_name": "clip"
+  },
+  "coffee_bag": {
+    "color": "brown",
+    "shape": "rectangular",
+    "common_name": "coffee bag"
+  },
+  "comb": {
+    "color": "black",
+    "shape": "rectangular",
+    "common_name": "comb"
+  },
+  "croissant": {
+    "color": "gold",
+    "shape": "curved",
+    "common_name": "croissant"
+  },
+  "darts_board": {
+    "color": "unknown",
+    "shape": "round",
+    "common_name": "dartboard"
+  },
+  "dice": {
+    "color": "white",
+    "shape": "cube",
+    "common_name": "dice"
+  },
+  "dog_toy": {
+    "color": "unknown",
+    "shape": "irregular",
+    "common_name": "dog toy"
+  },
+  "earth_globe": {
+    "color": "blue",
+    "shape": "round",
+    "common_name": "globe"
+  },
+  "eraser": {
+    "color": "white",
+    "shape": "rectangular",
+    "common_name": "eraser"
+  },
+  "foosball_table": {
+    "color": "unknown",
+    "shape": "rectangular",
+    "common_name": "foosball table"
+  },
+  "french_fries": {
+    "color": "gold",
+    "shape": "cylindrical",
+    "common_name": "french fries"
+  },
+  "gamepad": {
+    "color": "black",
+    "shape": "irregular",
+    "common_name": "gamepad"
+  },
+  "graphics_card": {
+    "color": "black",
+    "shape": "rectangular",
+    "common_name": "graphics card"
+  },
+  "helmets": {
+    "color": "white",
+    "shape": "round",
+    "common_name": "helmet"
+  },
+  "house": {
+    "color": "unknown",
+    "shape": "irregular",
+    "common_name": "house"
+  },
+  "iron": {
+    "color": "silver",
+    "shape": "irregular",
+    "common_name": "iron"
+  },
+  "kettle": {
+    "color": "silver",
+    "shape": "cylindrical",
+    "common_name": "kettle"
+  },
+  "lamp": {
+    "color": "unknown",
+    "shape": "irregular",
+    "common_name": "lamp"
+  },
+  "magic_potion": {
+    "color": "purple",
+    "shape": "bottle-shaped",
+    "common_name": "magic potion"
+  },
+  "mask": {
+    "color": "unknown",
+    "shape": "irregular",
+    "common_name": "mask"
+  },
+  "meta_quest": {
+    "color": "white",
+    "shape": "irregular",
+    "common_name": "VR headset"
+  },
+  "microscope": {
+    "color": "silver",
+    "shape": "irregular",
+    "common_name": "microscope"
+  },
+  "minecraft_blocks": {
+    "color": "multicolor",
+    "shape": "cube",
+    "common_name": "Minecraft block"
+  },
+  "money_stack": {
+    "color": "green",
+    "shape": "rectangular",
+    "common_name": "money stack"
+  },
+  "monitor": {
+    "color": "black",
+    "shape": "rectangular",
+    "common_name": "monitor"
+  },
+  "notes_holder": {
+    "color": "unknown",
+    "shape": "irregular",
+    "common_name": "notes holder"
+  },
+  "nvlink": {
+    "color": "black",
+    "shape": "rectangular",
+    "common_name": "NVLink"
+  },
+  "office_mail": {
+    "color": "white",
+    "shape": "rectangular",
+    "common_name": "office mail"
+  },
+  "oscilloscope": {
+    "color": "gray",
+    "shape": "rectangular",
+    "common_name": "oscilloscope"
+  },
+  "palette": {
+    "color": "brown",
+    "shape": "rectangular",
+    "common_name": "palette"
+  },
+  "pencil_case": {
+    "color": "unknown",
+    "shape": "rectangular",
+    "common_name": "pencil case"
+  },
+  "phone_stand": {
+    "color": "black",
+    "shape": "irregular",
+    "common_name": "phone stand"
+  },
+  "plant": {
+    "color": "green",
+    "shape": "irregular",
+    "common_name": "plant"
+  },
+  "pokeball": {
+    "color": "multicolor",
+    "shape": "round",
+    "common_name": "Poké Ball"
+  },
+  "puzzle_pieces": {
+    "color": "multicolor",
+    "shape": "irregular",
+    "common_name": "puzzle pieces"
+  },
+  "sandwich": {
+    "color": "brown",
+    "shape": "rectangular",
+    "common_name": "sandwich"
+  },
+  "scale": {
+    "color": "silver",
+    "shape": "rectangular",
+    "common_name": "scale"
+  },
+  "screwdriver": {
+    "color": "unknown",
+    "shape": "cylindrical",
+    "common_name": "screwdriver"
+  },
+  "sculpture": {
+    "color": "unknown",
+    "shape": "irregular",
+    "common_name": "sculpture"
+  },
+  "shampoo": {
+    "color": "white",
+    "shape": "cylindrical",
+    "common_name": "shampoo"
+  },
+  "sound_card": {
+    "color": "black",
+    "shape": "rectangular",
+    "common_name": "sound card"
+  },
+  "tissue": {
+    "color": "white",
+    "shape": "rectangular",
+    "common_name": "tissue box"
+  },
+  "toothpaste": {
+    "color": "white",
+    "shape": "cylindrical",
+    "common_name": "toothpaste"
+  },
+  "toy_plane": {
+    "color": "white",
+    "shape": "irregular",
+    "common_name": "toy plane"
+  },
+  "vehicle": {
+    "color": "unknown",
+    "shape": "irregular",
+    "common_name": "vehicle"
+  },
+  "walkie_talkie": {
+    "color": "black",
+    "shape": "rectangular",
+    "common_name": "walkie-talkie"
+  },
+  "book": {
+    "color": "unknown",
+    "shape": "rectangular",
+    "common_name": "book"
+  },
+  "plier": {
+    "color": "silver",
+    "shape": "irregular",
+    "common_name": "plier"
+  }
+}
